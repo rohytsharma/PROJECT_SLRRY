@@ -42,7 +42,8 @@ import org.maplibre.android.maps.MapLibreMap
 class ReadyToStartActivity : ComponentActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
-    private var hasLocationPermission = false
+    // Compose-observable state: permission changes will recompose and start/stop GPS updates.
+    private var hasLocationPermission by mutableStateOf(false)
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()

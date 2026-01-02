@@ -76,7 +76,8 @@ class StartRunActivity : ComponentActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
-    private var hasLocationPermission = false
+    // Compose-observable state: permission changes will recompose and start/stop GPS updates.
+    private var hasLocationPermission by mutableStateOf(false)
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -378,56 +379,63 @@ fun StartRunScreen(
         )
 
         // Screen Switcher (UI overlays only; map persists)
-        when (uiState.screenState) {
-            RunScreenState.READY_TO_START -> {
-                ReadyToStartScreen(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    fusedLocationClient = fusedLocationClient,
-                    locationRequest = locationRequest,
-                    hasLocationPermission = hasLocationPermission,
-                    mapLibreMap = mapLibreMap,
-                    mapView = mapView,
+    when (uiState.screenState) {
+        RunScreenState.READY_TO_START -> {
+            ReadyToStartScreen(
+                uiState = uiState,
+                viewModel = viewModel,
+                fusedLocationClient = fusedLocationClient,
+                locationRequest = locationRequest,
+                hasLocationPermission = hasLocationPermission,
+                mapLibreMap = mapLibreMap,
+                mapView = mapView,
                     onMapReady = { map -> mapLibreMap = map },
                     showMap = false
-                )
-            }
-            RunScreenState.RUNNING -> {
-                RunningScreen(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    mapLibreMap = mapLibreMap,
-                    mapView = mapView,
+            )
+        }
+        RunScreenState.RUNNING -> {
+            RunningScreen(
+                uiState = uiState,
+                viewModel = viewModel,
+                mapLibreMap = mapLibreMap,
+                mapView = mapView,
                     onMapReady = { map -> mapLibreMap = map },
                     showMap = false
-                )
-            }
-            RunScreenState.PAUSED_WITH_OVERLAY -> {
-                PausedWithOverlayScreen(
-                    uiState = uiState,
-                    viewModel = viewModel
-                )
-            }
-            RunScreenState.PAUSED_WITH_MAP -> {
-                PausedWithMapScreen(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    mapLibreMap = mapLibreMap,
-                    mapView = mapView,
+            )
+        }
+        RunScreenState.PAUSED_WITH_OVERLAY -> {
+            PausedWithOverlayScreen(
+                uiState = uiState,
+                viewModel = viewModel
+            )
+        }
+        RunScreenState.PAUSED_WITH_MAP -> {
+            PausedWithMapScreen(
+                uiState = uiState,
+                viewModel = viewModel,
+                mapLibreMap = mapLibreMap,
+                mapView = mapView,
                     onMapReady = { map -> mapLibreMap = map },
                     showMap = false
-                )
-            }
-            RunScreenState.SUMMARY -> {
-                RunSummaryScreen(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    mapLibreMap = mapLibreMap,
-                    mapView = mapView,
+            )
+        }
+        RunScreenState.SUMMARY -> {
+            RunSummaryScreen(
+                uiState = uiState,
+                viewModel = viewModel,
+                mapLibreMap = mapLibreMap,
+                mapView = mapView,
                     onMapReady = { map -> mapLibreMap = map },
                     showMap = false
-                )
+            )
             }
+        RunScreenState.MAPS -> {
+            com.example.slrry_10.ui.MapsHubScreen(
+                uiState = uiState,
+                viewModel = viewModel,
+                mapLibreMap = mapLibreMap
+            )
+        }
         }
     }
 }

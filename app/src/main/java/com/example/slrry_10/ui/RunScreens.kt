@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -184,6 +185,7 @@ fun PausedWithOverlayScreen(
     uiState: com.example.slrry_10.viewmodel.StartRunUiState,
     viewModel: StartRunViewModel
 ) {
+    val distanceKm = ((uiState.currentSession?.distance ?: 0.0) / 1000.0)
     Box(modifier = Modifier.fillMaxSize()) {
         // White background
         Box(
@@ -201,7 +203,7 @@ fun PausedWithOverlayScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "0.00",
+                text = String.format("%.2f", distanceKm),
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
@@ -312,22 +314,34 @@ fun PausedWithMapScreen(
                 .zIndex(2f),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                MetricCard(value = "0'00''", label = "Avg Pace", icon = Icons.Default.DirectionsRun)
-                MetricCard(value = "00:00", label = "Duration", icon = Icons.Default.AccessTime)
-                MetricCard(value = "0.00m²", label = "area", icon = Icons.Default.Castle)
+                MetricCard(
+                    value = uiState.currentSession?.averagePace ?: "0'00''",
+                    label = "Avg Pace",
+                    icon = Icons.Default.DirectionsRun
+                )
+                MetricCard(
+                    value = formatDuration(uiState.currentSession?.duration ?: 0L),
+                    label = "Duration",
+                    icon = Icons.Default.AccessTime
+                )
+                MetricCard(
+                    value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
+                    label = "area",
+                    icon = Icons.Default.Castle
+                )
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 FloatingActionButton(
                     onClick = { viewModel.resumeTracking() },
                     modifier = Modifier.size(64.dp),
@@ -342,7 +356,7 @@ fun PausedWithMapScreen(
 
                 Button(
                     onClick = { viewModel.hideMapInPaused() },
-                    modifier = Modifier
+            modifier = Modifier
                         .weight(1f)
                         .height(56.dp)
                         .padding(horizontal = 16.dp),
@@ -354,7 +368,7 @@ fun PausedWithMapScreen(
                     shape = RoundedCornerShape(28.dp)
                 ) {
                     Text("CONTINUE", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
+        }
 
                 FloatingActionButton(
                     onClick = { viewModel.finishRun() },
@@ -380,7 +394,10 @@ fun RunSummaryScreen(
     showMap: Boolean = true
 ) {
     // Map is hosted at the StartRunActivity root; this composable is only the overlay UI.
-    SummaryPage(uiState = uiState)
+    SummaryPage(
+        uiState = uiState,
+        onContinue = { viewModel.openMaps() }
+    )
 }
 
 @Composable
@@ -414,6 +431,13 @@ fun MapViewComponent(
     showMap: Boolean
 ) {
     if (!showMap) return
+
+    // MapLibre's GL surface cannot render inside Android Studio Compose Preview.
+    // Show a lightweight placeholder there so the UI isn't a black box.
+    if (LocalInspectionMode.current) {
+        OfflineMapPlaceholder(modifier = Modifier.fillMaxSize())
+        return
+    }
     
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -422,6 +446,7 @@ fun MapViewComponent(
     var showFallback by remember { mutableStateOf(false) }
     var offlineDownloadProgress by remember { mutableStateOf<Int?>(null) }
     var hasCenteredOnUser by remember { mutableStateOf(false) }
+    var lastFollowUpdateMs by remember { mutableStateOf(0L) }
     
     // Use remember to persist map view across recompositions
     val currentMapView = remember { 
@@ -536,25 +561,28 @@ fun MapViewComponent(
                         override fun onMapReady(map: MapLibreMap) {
                             try {
                                 internalMap.value = map
-                                // Offline-capable style (asset). Tiles are HTTP OSM raster.
-                                map.setStyle(Style.Builder().fromUri(OFFLINE_STYLE_URI)) {
+
+                                // Prefer a known-good online demo style (renders reliably).
+                                // If it doesn't load quickly, we'll fall back to the asset style.
+                                map.setStyle(Style.Builder().fromUri(ONLINE_STYLE_URI)) {
                                     // Style loaded (not necessarily all tiles yet, but map should render)
                                     isMapLoaded = true
                                     showFallback = false
 
-                                    // Center on location if available; otherwise show a world view.
+                                    // If we already have a location, start centered on it (not zoomed out).
                                     val loc = uiState.currentLocation
-                                    val target = loc?.let { LatLng(it.latitude, it.longitude) } ?: LatLng(0.0, 0.0)
-                                    val zoom = if (loc != null) 15.0 else 1.5
-                                    try {
-                                        val camera = CameraPosition.Builder()
-                                            .target(target)
-                                            .zoom(zoom)
-                                            .build()
-                                        map.moveCamera(CameraUpdateFactory.newCameraPosition(camera))
-                                    } catch (_: Exception) {}
+                                    if (loc != null) {
+                                        try {
+                                            val camera = CameraPosition.Builder()
+                                                .target(LatLng(loc.latitude, loc.longitude))
+                                                .zoom(16.5)
+                                                .build()
+                                            map.moveCamera(CameraUpdateFactory.newCameraPosition(camera))
+                                            hasCenteredOnUser = true
+                                        } catch (_: Exception) {}
+                                    }
 
-                                    // Show current location marker if available
+                                    // Show current location marker if available.
                                     try {
                                         updateUserLocationOnMap(map, loc)
                                     } catch (_: Exception) {}
@@ -585,14 +613,32 @@ fun MapViewComponent(
         }
     )
 
-    // If tiles haven't loaded after a few seconds, show a fallback background.
-    LaunchedEffect(Unit) {
-        delay(3500)
+    // If tiles/style fail to render, show a lightweight placeholder instead of a black screen.
+    if (showFallback) {
+        OfflineMapPlaceholder(modifier = Modifier.fillMaxSize())
+    }
+
+    // If the preferred online style doesn't load quickly, fall back to the local asset style.
+    LaunchedEffect(internalMap.value) {
+        val map = internalMap.value ?: return@LaunchedEffect
+        delay(2500)
+        if (!isMapLoaded) {
+            try {
+                map.setStyle(Style.Builder().fromUri(OFFLINE_STYLE_URI)) {
+                    isMapLoaded = true
+                    showFallback = false
+                }
+            } catch (_: Exception) {
+                // Ignore style fallback errors
+            }
+        }
+        // If we still don't have a style after another beat, show placeholder instead of black.
+        delay(2500)
         if (!isMapLoaded) showFallback = true
     }
 
     // Keep current location marker updated
-    LaunchedEffect(uiState.currentLocation) {
+    LaunchedEffect(uiState.currentLocation, uiState.isTracking) {
         val map = internalMap.value ?: return@LaunchedEffect
         try {
             updateUserLocationOnMap(map, uiState.currentLocation)
@@ -600,18 +646,36 @@ fun MapViewComponent(
             // Ignore marker errors
         }
 
-        // Center the map exactly once when we first get a real GPS fix
         val loc = uiState.currentLocation
+
+        // Center tightly when we first get a real GPS fix.
         if (!hasCenteredOnUser && loc != null) {
             try {
                 val camera = CameraPosition.Builder()
                     .target(LatLng(loc.latitude, loc.longitude))
-                    .zoom(16.0)
+                    .zoom(16.5)
                     .build()
                 map.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 400)
                 hasCenteredOnUser = true
             } catch (_: Exception) {
                 // Ignore camera errors
+            }
+        }
+
+        // While tracking, keep the camera following the user (throttled so it stays smooth).
+        if (uiState.isTracking && loc != null) {
+            val now = System.currentTimeMillis()
+            if (now - lastFollowUpdateMs >= 1200L) {
+                lastFollowUpdateMs = now
+                try {
+                    val camera = CameraPosition.Builder()
+                        .target(LatLng(loc.latitude, loc.longitude))
+                        .zoom(16.5)
+                        .build()
+                    map.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 300)
+                } catch (_: Exception) {
+                    // Ignore camera errors
+                }
             }
         }
 
@@ -774,7 +838,7 @@ fun TopStatusBar(
             text = "32°C",
             color = pill
         )
-
+        
         SignalBarsPill(color = pill)
 
         StatusPill(
@@ -979,17 +1043,17 @@ fun BottomMetricsAndButton(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             MetricCard(
-                value = "0'00''",
+                value = uiState.currentSession?.averagePace ?: "0'00''",
                 label = "Avg Pace",
                 icon = Icons.Default.DirectionsRun
             )
             MetricCard(
-                value = "00:00",
+                value = formatDuration(uiState.currentSession?.duration ?: 0L),
                 label = "Duration",
                 icon = Icons.Default.AccessTime
             )
             MetricCard(
-                value = "0.00m²",
+                value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
                 label = "area captured",
                 icon = Icons.Default.Castle
             )
@@ -1117,6 +1181,7 @@ fun formatDuration(seconds: Long): String {
 
 private const val USER_LOCATION_SOURCE_ID = "user-location-source"
 private const val USER_LOCATION_LAYER_ID = "user-location-layer"
+private const val ONLINE_STYLE_URI = "https://demotiles.maplibre.org/style.json"
 private const val OFFLINE_STYLE_URI = "asset://offline_style.json"
 private const val OFFLINE_PREFS = "slrry_offline_maps"
 private const val OFFLINE_DOWNLOADED = "region_downloaded_v1"
