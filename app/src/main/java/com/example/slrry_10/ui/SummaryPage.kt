@@ -13,6 +13,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +28,8 @@ import com.example.slrry_10.viewmodel.StartRunUiState
 fun SummaryPage(
     uiState: StartRunUiState,
     modifier: Modifier = Modifier,
-    title: String = "Monday Morning Run"
+    title: String = "Monday Morning Run",
+    onContinue: () -> Unit = {}
 ) {
     val accent = Color(0xFFB8FF3A)
     val darkText = Color(0xFF111416)
@@ -113,6 +116,27 @@ fun SummaryPage(
             DetailCard(title = "Calories", subtitle = "Total energy burned", value = calories, muted = muted, text = darkText)
             DetailCard(title = "Your Area", subtitle = "Total area you captured", value = area, muted = muted, text = darkText)
             DetailCard(title = "Elevation Gain", subtitle = "Total height that you climb", value = elevation, muted = muted, text = darkText)
+        }
+
+        // Continue -> Maps screen
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Button(
+                onClick = onContinue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = darkText)
+            ) {
+                Text("CONTINUE", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
         }
     }
 }

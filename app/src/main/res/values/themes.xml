@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SLRRY_10" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Compose renders almost everything, but the Activity theme still controls:
+      - system bars defaults (status/nav)
+      - dialogs/menus
+      - window background during launch
+
+      Use Material3 so the app feels modern without changing any Compose layouts.
+    -->
+    <style name="Theme.SLRRY_10" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Keep edge-to-edge: Compose will control icon appearance at runtime. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- Reasonable default while Compose content initializes (prevents black flash). -->
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
 </resources>

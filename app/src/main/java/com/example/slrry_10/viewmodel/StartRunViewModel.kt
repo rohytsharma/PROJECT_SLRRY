@@ -16,6 +16,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.cos
+
+enum class MapsTab { WORLD, PERSONAL, FRIENDS }
+
+data class ZoneOwner(
+    val id: String,
+    val displayName: String,
+    val colorArgb: Int,
+    val areas: List<AreaModel>
+)
 
 data class StartRunUiState(
     val currentLocation: LocationModel? = null,
@@ -31,7 +41,11 @@ data class StartRunUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val screenState: RunScreenState = RunScreenState.READY_TO_START,
-    val showMapInPaused: Boolean = false
+    val showMapInPaused: Boolean = false,
+    // Maps screen state
+    val mapsTab: MapsTab = MapsTab.PERSONAL,
+    val worldOwners: List<ZoneOwner> = emptyList(),
+    val friendsOwners: List<ZoneOwner> = emptyList()
 )
 
 class StartRunViewModel(
@@ -132,6 +146,24 @@ class StartRunViewModel(
             currentSession = session,
             screenState = RunScreenState.SUMMARY
         )
+    }
+
+    fun openMaps() {
+        // Ensure we have some data to show for WORLD / FRIENDS.
+        val current = _uiState.value
+        val ensured = ensureDemoOwners(current)
+        _uiState.value = ensured.copy(
+            screenState = RunScreenState.MAPS,
+            mapsTab = MapsTab.PERSONAL
+        )
+    }
+
+    fun backToSummaryFromMaps() {
+        _uiState.value = _uiState.value.copy(screenState = RunScreenState.SUMMARY)
+    }
+
+    fun setMapsTab(tab: MapsTab) {
+        _uiState.value = _uiState.value.copy(mapsTab = tab)
     }
     
     fun stopTracking() {
@@ -301,6 +333,81 @@ class StartRunViewModel(
                 kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
         val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
         return earthRadius * c
+    }
+
+    private fun ensureDemoOwners(state: StartRunUiState): StartRunUiState {
+        // If we already have demo owners, keep them stable.
+        if (state.worldOwners.isNotEmpty() || state.friendsOwners.isNotEmpty()) return state
+
+        val loc = state.currentLocation ?: LocationModel(0.0, 0.0)
+
+        // If the user has no captured areas yet, we still keep PERSONAL empty,
+        // but WORLD/FRIENDS will show example zones so the screen isn't blank.
+        val youAreas = state.capturedAreas
+
+        fun squareArea(center: LocationModel, meters: Double): AreaModel {
+            val lat = center.latitude
+            val lon = center.longitude
+            val latDelta = meters / 111_320.0
+            val lonDelta = meters / (111_320.0 * cos(Math.toRadians(lat)).coerceAtLeast(0.2))
+            val poly = listOf(
+                LocationModel(lat + latDelta, lon - lonDelta),
+                LocationModel(lat + latDelta, lon + lonDelta),
+                LocationModel(lat - latDelta, lon + lonDelta),
+                LocationModel(lat - latDelta, lon - lonDelta)
+            )
+            val area = try {
+                locationRepo.calculateArea(poly)
+            } catch (_: Throwable) {
+                0.0
+            }
+            return AreaModel(polygon = poly, area = area)
+        }
+
+        val world = buildList {
+            // You (green) if you have data
+            if (youAreas.isNotEmpty()) {
+                add(ZoneOwner(id = "you", displayName = "You", colorArgb = 0xFFB8FF3A.toInt(), areas = youAreas))
+            }
+            // Two "global" users
+            add(
+                ZoneOwner(
+                    id = "world_1",
+                    displayName = "World User 1",
+                    colorArgb = 0xFFF04AA8.toInt(), // pink-ish
+                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude + 0.0015, longitude = loc.longitude + 0.0010), 120.0))
+                )
+            )
+            add(
+                ZoneOwner(
+                    id = "world_2",
+                    displayName = "World User 2",
+                    colorArgb = 0xFF6BEA5B.toInt(), // green-ish
+                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude - 0.0018, longitude = loc.longitude - 0.0008), 140.0))
+                )
+            )
+        }
+
+        val friends = buildList {
+            add(
+                ZoneOwner(
+                    id = "friend_1",
+                    displayName = "Friend 1",
+                    colorArgb = 0xFF7C5CFF.toInt(), // purple
+                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude + 0.0009, longitude = loc.longitude - 0.0014), 110.0))
+                )
+            )
+            add(
+                ZoneOwner(
+                    id = "friend_2",
+                    displayName = "Friend 2",
+                    colorArgb = 0xFFFF8A3D.toInt(), // orange
+                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude - 0.0010, longitude = loc.longitude + 0.0016), 130.0))
+                )
+            )
+        }
+
+        return state.copy(worldOwners = world, friendsOwners = friends)
     }
 }
 
