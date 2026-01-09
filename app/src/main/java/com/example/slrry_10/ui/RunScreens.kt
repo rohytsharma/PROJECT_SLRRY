@@ -562,9 +562,9 @@ fun MapViewComponent(
                             try {
                                 internalMap.value = map
 
-                                // Prefer a known-good online demo style (renders reliably).
-                                // If it doesn't load quickly, we'll fall back to the asset style.
-                                map.setStyle(Style.Builder().fromUri(ONLINE_STYLE_URI)) {
+                                // Use the same raster OSM style everywhere (matches MapsHub and avoids
+                                // vector style/glyph/sprite dependencies).
+                                map.setStyle(Style.Builder().fromUri(OFFLINE_STYLE_URI)) {
                                     // Style loaded (not necessarily all tiles yet, but map should render)
                                     isMapLoaded = true
                                     showFallback = false
@@ -618,22 +618,9 @@ fun MapViewComponent(
         OfflineMapPlaceholder(modifier = Modifier.fillMaxSize())
     }
 
-    // If the preferred online style doesn't load quickly, fall back to the local asset style.
-    LaunchedEffect(internalMap.value) {
-        val map = internalMap.value ?: return@LaunchedEffect
-        delay(2500)
-        if (!isMapLoaded) {
-            try {
-                map.setStyle(Style.Builder().fromUri(OFFLINE_STYLE_URI)) {
-                    isMapLoaded = true
-                    showFallback = false
-                }
-            } catch (_: Exception) {
-                // Ignore style fallback errors
-            }
-        }
-        // If we still don't have a style after another beat, show placeholder instead of black.
-        delay(2500)
+    // If the style/tiles haven't loaded after a few seconds, show placeholder instead of black.
+    LaunchedEffect(Unit) {
+        delay(4500)
         if (!isMapLoaded) showFallback = true
     }
 
@@ -1181,7 +1168,6 @@ fun formatDuration(seconds: Long): String {
 
 private const val USER_LOCATION_SOURCE_ID = "user-location-source"
 private const val USER_LOCATION_LAYER_ID = "user-location-layer"
-private const val ONLINE_STYLE_URI = "https://demotiles.maplibre.org/style.json"
 private const val OFFLINE_STYLE_URI = "asset://offline_style.json"
 private const val OFFLINE_PREFS = "slrry_offline_maps"
 private const val OFFLINE_DOWNLOADED = "region_downloaded_v1"
