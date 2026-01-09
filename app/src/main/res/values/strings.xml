@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">SLRRY</string>
+    <string name="title_activity_enter_name">EnterNameActivity</string>
+    <string name="title_activity_gender">GenderActivity</string>
+    <string name="title_activity_height">HeightActivity</string>
+    <string name="title_activity_experience">ExperienceActivity</string>
+    <string name="title_activity_distance_goal">DistanceGoalActivity</string>
+    <string name="title_activity_running_goal">RunningGoalActivity</string>
+    <string name="title_activity_specific_event">SpecificEventActivity</string>
+    <string name="title_activity_completion">CompletionActivity</string>
+    <string name="title_activity_recent">RecentActivity</string>
+    <string name="title_activity_leader_board">LeaderBoardActivity</string>
+</resources>
