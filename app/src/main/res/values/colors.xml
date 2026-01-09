@@ -7,7 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+<<<<<<< HEAD
     <color name="green">#C6FF00</color>
     <color name="background">#F7F6F2</color>
     <color name="card">#FFFFFF</color>
+=======
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
 </resources>

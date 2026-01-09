@@ -19,6 +19,10 @@ dependencyResolutionManagement {
     }
 }
 
+<<<<<<< HEAD
 rootProject.name = "Recent Activities"
+=======
+rootProject.name = "SLRRY_1.0"
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
 include(":app")
  

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+<<<<<<< HEAD
     <style name="Theme.RecentActivities" parent="android:Theme.Material.Light.NoActionBar" />
+=======
+    <style name="Theme.SLRRY_10" parent="android:Theme.Material.Light.NoActionBar" />
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
 </resources>

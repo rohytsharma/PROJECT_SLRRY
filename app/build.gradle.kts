@@ -5,13 +5,21 @@ plugins {
 }
 
 android {
+<<<<<<< HEAD
     namespace = "com.example.recentactivities"
+=======
+    namespace = "com.example.slrry_10"
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
+<<<<<<< HEAD
         applicationId = "com.example.recentactivities"
+=======
+        applicationId = "com.example.slrry_10"
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -50,6 +58,32 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+<<<<<<< HEAD
+=======
+    
+    // MapLibre GL
+    implementation("org.maplibre.gl:android-sdk:11.5.1")
+    implementation("org.maplibre.gl:android-plugin-annotation-v9:3.0.0")
+    
+    // Location Services
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    
+    // Material Icons
+    implementation("androidx.compose.material:material-icons-extended")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
+    // Networking
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -57,5 +91,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+<<<<<<< HEAD
     implementation("androidx.compose.material:material-icons-extended")
+=======
+>>>>>>> 8b01e0dff15ceab176a5ee417be35d64caee57f9
 }
