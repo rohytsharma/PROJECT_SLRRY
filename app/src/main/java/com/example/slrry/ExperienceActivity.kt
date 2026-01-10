@@ -109,7 +109,7 @@ fun ExperienceScreen(
         Progress(step = step, totalSteps = totalSteps)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "WHAT'S YOUR RUNNING EXPERIENCE?",
+            text = "WHAT'S YOUR RUNNING EXPERIENCE ?",
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.fillMaxWidth()

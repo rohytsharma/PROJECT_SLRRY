@@ -69,10 +69,10 @@ class RecentActivity : ComponentActivity() {
 fun RecentActivitiesScreen() {
     // Sample data - in real app, this would come from ViewModel/Repository
     val activities = listOf(
-        RunActivity("1", "Monday Morning Run", "16/7/2024", "3,00 Km", "15.00", "5'00\"", 0.6f),
-        RunActivity("2", "Sunday Morning Run", "15/7/2024", "15,00 Km", "1.00.00", "4'00\"", 0.95f),
-        RunActivity("3", "Saturday Morning Run", "15/7/2024", "21,00 Km", "2.06.00", "6'00\"", 0.9f),
-        RunActivity("4", "Friday Morning Run", "15/7/2024", "7,00 Km", "49.00", "7'00\"", 0.75f)
+        RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
+        RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
+        RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
+        RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
     )
     
     val totalDistance = "0"
