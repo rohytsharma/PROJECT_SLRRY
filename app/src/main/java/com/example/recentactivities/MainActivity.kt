@@ -172,7 +172,7 @@ fun SuggestedWorkoutsSection() {
                 Text(
                     "21.1 km workout designed to build endurance",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = Color.Red
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -296,7 +296,7 @@ fun BottomNavigationBar() {
 
 @Composable
 fun BottomNavItem(icon: ImageVector) {
-    Icon(icon, null, tint = Color.Black, modifier = Modifier.size(25.dp))
+    Icon(icon, null, tint = Color.Black, modifier = Modifier.size(26.dp))
 }
 
 /* ---------------- PREVIEW ---------------- */
