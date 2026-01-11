@@ -296,7 +296,7 @@ fun BottomNavigationBar() {
 
 @Composable
 fun BottomNavItem(icon: ImageVector) {
-    Icon(icon, null, tint = Color.Black, modifier = Modifier.size(26.dp))
+    Icon(icon, null, tint = Color.Black, modifier = Modifier.size(25.dp))
 }
 
 /* ---------------- PREVIEW ---------------- */
