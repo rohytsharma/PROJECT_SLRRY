@@ -1,11 +1,13 @@
-package com.example.slrryloginactivity
+package com.example.slrry_10
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,20 +27,33 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.slrry_10.ui.theme.SLRRY_10Theme
 
-class MainActivity : ComponentActivity() {
+class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
-            LoginScreen()
+            SLRRY_10Theme {
+                LoginScreen(
+                    onBack = { finish() },
+                    onLogin = {
+                        // For now (until Firebase): login -> dashboard
+                        startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
+                        finish()
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(
+    onBack: () -> Unit = {},
+    onLogin: () -> Unit = {}
+) {
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -69,7 +84,8 @@ fun LoginScreen() {
             Box(
                 modifier = Modifier
                     .size(50.dp)
-                    .background(Color(0xFFB5FF00), CircleShape),
+                    .background(Color(0xFFB5FF00), CircleShape)
+                    .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -136,7 +152,7 @@ fun LoginScreen() {
 
         // LOGIN BUTTON
         Button(
-            onClick = {},
+            onClick = onLogin,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp),
@@ -158,5 +174,5 @@ fun LoginScreen() {
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    LoginScreen()
+    SLRRY_10Theme { LoginScreen() }
 }
