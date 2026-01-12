@@ -27,8 +27,8 @@ class MainActivity : ComponentActivity() {
             SLRRY_10Theme {
                 SLRRYScreen(
                     onStartRunClick = {
-                        // Single-activity run flow (keeps MapView from resetting)
-                        val intent = Intent(this@MainActivity, StartRunActivity::class.java)
+                        // Splash -> StartScreen
+                        val intent = Intent(this@MainActivity, StartScreenActivity::class.java)
                         startActivity(intent)
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                     }
