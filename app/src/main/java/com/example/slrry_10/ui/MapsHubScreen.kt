@@ -64,7 +64,8 @@ private data class RenderedMapIds(
 fun MapsHubScreen(
     uiState: StartRunUiState,
     viewModel: StartRunViewModel,
-    mapLibreMap: MapLibreMap?
+    mapLibreMap: MapLibreMap?,
+    onBack: (() -> Unit)? = null
 ) {
     val accent = Color(0xFFB8FF3A)
     val text = Color(0xFF111416)
@@ -134,7 +135,7 @@ fun MapsHubScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { viewModel.backToSummaryFromMaps() }) {
+                IconButton(onClick = { onBack?.invoke() ?: viewModel.backToSummaryFromMaps() }) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = text)
                 }
                 Text(

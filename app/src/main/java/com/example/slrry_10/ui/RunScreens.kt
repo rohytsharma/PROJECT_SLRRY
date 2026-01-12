@@ -1,5 +1,6 @@
 package com.example.slrry_10.ui
 
+import android.app.Activity
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.os.VibrationEffect
@@ -393,10 +394,12 @@ fun RunSummaryScreen(
     onMapReady: (MapLibreMap) -> Unit = {},
     showMap: Boolean = true
 ) {
+    val activity = LocalContext.current as? Activity
     // Map is hosted at the StartRunActivity root; this composable is only the overlay UI.
     SummaryPage(
         uiState = uiState,
-        onContinue = { viewModel.openMaps() }
+        // After run details -> Continue should return to Dashboard (finish this activity).
+        onContinue = { activity?.finish() }
     )
 }
 

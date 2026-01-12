@@ -31,6 +31,66 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".StartScreenActivity"
+            android:exported="false"
+            android:label="Start"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false"
+            android:label="Dashboard"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".MapsHubActivity"
+            android:exported="false"
+            android:label="Maps"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".PasswordActivity"
+            android:exported="false"
+            android:label="Sign Up"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".EnterNameActivity"
+            android:exported="false"
+            android:label="Name"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".GenderActivity"
+            android:exported="false"
+            android:label="Gender"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".HeightActivity"
+            android:exported="false"
+            android:label="Height"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".ExperienceActivity"
+            android:exported="false"
+            android:label="Experience"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".DistanceGoalActivity"
+            android:exported="false"
+            android:label="Distance Goal"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".RunningGoalActivity"
+            android:exported="false"
+            android:label="Running Goal"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".SpecificEventActivity"
+            android:exported="false"
+            android:label="Specific Event"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".CompletionActivity"
+            android:exported="false"
+            android:label="Success"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
             android:name=".UserActivity"
             android:exported="false"
             android:label="User"
