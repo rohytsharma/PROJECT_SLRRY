@@ -46,6 +46,11 @@
             android:label="Maps"
             android:theme="@style/Theme.SLRRY_10" />
         <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:label="Login"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
             android:name=".PasswordActivity"
             android:exported="false"
             android:label="Sign Up"

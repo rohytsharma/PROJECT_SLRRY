@@ -41,8 +41,8 @@ class StartScreenActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
                     StartScreen(
                         onSignIn = {
-                            // For now: login -> dashboard
-                            startActivity(Intent(this, DashboardActivity::class.java))
+                            // Open Login screen (Firebase will be wired later)
+                            startActivity(Intent(this, LoginActivity::class.java))
                             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                         },
                         onSignUp = {

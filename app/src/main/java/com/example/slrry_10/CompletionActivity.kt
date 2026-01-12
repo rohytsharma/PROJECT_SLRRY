@@ -1,5 +1,6 @@
 package com.example.slrry_10
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -46,7 +47,15 @@ class CompletionActivity : ComponentActivity() {
         setContent {
             SLRRYTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    CompletionScreen()
+                    CompletionScreen(
+                        onDone = {
+                            // Navigate to StartScreen and clear the back stack (no going back to onboarding)
+                            val intent = Intent(this@CompletionActivity, StartScreenActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
+                            finish()
+                        }
+                    )
                 }
             }
         }
@@ -54,7 +63,7 @@ class CompletionActivity : ComponentActivity() {
 }
 
 @Composable
-fun CompletionScreen() {
+fun CompletionScreen(onDone: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -110,7 +119,7 @@ fun CompletionScreen() {
             
             // Done Button
             Button(
-                onClick = { /* TODO: navigate to main screen */ },
+                onClick = onDone,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
