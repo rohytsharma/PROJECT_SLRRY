@@ -50,7 +50,9 @@ private fun DashboardRoot() {
     val selectedIndex = remember { mutableIntStateOf(0) }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         topBar = { DashboardTopBar(onProfileClick = { selectedIndex.intValue = 3 }) },
         bottomBar = {
             BottomNavigationBar(
