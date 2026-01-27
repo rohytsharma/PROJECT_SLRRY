@@ -88,6 +88,7 @@ private fun ForgotPasswordEmailScreen(
     onSubmitEmail: (String) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -135,7 +136,10 @@ private fun ForgotPasswordEmailScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                if (showError) showError = false
+            },
             placeholder = { Text("Email") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             shape = RoundedCornerShape(12.dp),
@@ -150,10 +154,27 @@ private fun ForgotPasswordEmailScreen(
             )
         )
 
+        if (showError) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Please enter your email.",
+                color = Color(0xFFD32F2F),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
         Spacer(modifier = Modifier.height(22.dp))
 
         Button(
-            onClick = { onSubmitEmail(email.trim()) },
+            onClick = {
+                val trimmed = email.trim()
+                if (trimmed.isBlank()) {
+                    showError = true
+                } else {
+                    onSubmitEmail(trimmed)
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp),
