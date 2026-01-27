@@ -148,6 +148,7 @@ private fun ForgotPasswordEmailScreen(
             },
             placeholder = { Text("Email") },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
