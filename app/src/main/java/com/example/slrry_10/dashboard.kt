@@ -40,6 +40,7 @@ class DashboardActivity : ComponentActivity() {
             com.example.slrry_10.ui.theme.SLRRY_10Theme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    topBar = { DashboardTopBar() },
                     bottomBar = { BottomNavigationBar() }
                 ) { innerPadding ->
                     HomeScreen(modifier = Modifier.padding(innerPadding))
@@ -47,6 +48,14 @@ class DashboardActivity : ComponentActivity() {
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardTopBar() {
+    CenterAlignedTopAppBar(
+        title = { Text("Dashboard", fontWeight = FontWeight.SemiBold) }
+    )
 }
 
 /* ---------------- HOME SCREEN ---------------- */
