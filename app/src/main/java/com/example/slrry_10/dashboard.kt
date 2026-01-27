@@ -47,6 +47,25 @@ class DashboardActivity : ComponentActivity() {
 
 private val DashAccentGreen = Color(0xFFB5FF00)
 
+@Composable
+fun DashboardRoot() {
+    val selectedIndex = remember { mutableIntStateOf(0) }
+
+    Scaffold(
+        bottomBar = {
+            BottomNavigationBar(
+                selectedIndex = selectedIndex.intValue,
+                onSelect = { selectedIndex.intValue = it }
+            )
+        }
+    ) { padding ->
+        when (selectedIndex.intValue) {
+            0 -> HomeScreen(modifier = Modifier.padding(padding))
+            else -> HomeScreen(modifier = Modifier.padding(padding))
+        }
+    }
+}
+
 /* ---------------- HOME SCREEN ---------------- */
 
 @Composable
@@ -288,13 +307,8 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
             DashboardPrimaryButton(
                 text = "Start now",
                 onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DashAccentGreen
-                )
-            ) {
-                Text("Start now", color = Color.Black)
-            }
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -378,9 +392,9 @@ fun BottomNavigationBar(
             },
             modifier = Modifier
                 .size(88.dp)
-                .offset(y = (-20).dp)
-                .background(DashAccentGreen, CircleShape),
-            contentAlignment = Alignment.Center
+                .offset(y = (-20).dp),
+            containerColor = DashAccentGreen,
+            contentColor = Color.Black
         ) {
             Text("START", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
