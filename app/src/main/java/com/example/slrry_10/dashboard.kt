@@ -3,6 +3,7 @@ package com.example.slrry_10
 import android.os.Bundle
 import android.content.Intent
 import android.os.SystemClock
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -213,6 +214,7 @@ fun RecentActivityCard() {
 
 @Composable
 fun SuggestedWorkoutsSection() {
+    val context = LocalContext.current
     Column {
 
         Row(
@@ -220,7 +222,15 @@ fun SuggestedWorkoutsSection() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Suggested workouts", fontWeight = FontWeight.Bold)
-            Text("See all", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "See all",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.clickable {
+                    Toast.makeText(context, "Suggested workouts (coming soon)", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            )
         }
 
         Spacer(Modifier.height(8.dp))
