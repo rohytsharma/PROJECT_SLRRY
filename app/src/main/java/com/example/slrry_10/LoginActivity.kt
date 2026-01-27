@@ -33,6 +33,12 @@ private val AccentGreen = Color(0xFFB5FF00)
 private val FieldBg = Color(0xFFF6F6F6)
 private val PageBg = Color.White
 
+private enum class LoginRoute {
+    LOGIN,
+    FORGOT_EMAIL,
+    FORGOT_CODE
+}
+
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
