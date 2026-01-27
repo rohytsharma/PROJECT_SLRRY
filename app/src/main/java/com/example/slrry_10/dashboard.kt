@@ -110,7 +110,13 @@ private fun DashboardTopBar(
     onProfileClick: () -> Unit
 ) {
     CenterAlignedTopAppBar(
-        title = { Text(title, fontWeight = FontWeight.SemiBold) },
+        title = {
+            Text(
+                title,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 20.sp
+            )
+        },
         actions = {
             IconButton(onClick = onProfileClick) {
                 Icon(Icons.Filled.Person, contentDescription = "Profile")
