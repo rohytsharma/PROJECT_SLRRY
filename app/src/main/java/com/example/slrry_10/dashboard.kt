@@ -38,15 +38,27 @@ class DashboardActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             com.example.slrry_10.ui.theme.SLRRY_10Theme {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = { DashboardTopBar() },
-                    bottomBar = { BottomNavigationBar() }
-                ) { innerPadding ->
-                    HomeScreen(modifier = Modifier.padding(innerPadding))
-                }
+                DashboardRoot()
             }
         }
+    }
+}
+
+@Composable
+private fun DashboardRoot() {
+    val selectedIndex = remember { mutableIntStateOf(0) }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { DashboardTopBar() },
+        bottomBar = {
+            BottomNavigationBar(
+                selectedIndex = selectedIndex.intValue,
+                onSelect = { selectedIndex.intValue = it }
+            )
+        }
+    ) { innerPadding ->
+        HomeScreen(modifier = Modifier.padding(innerPadding))
     }
 }
 
@@ -275,9 +287,11 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 /* ---------------- BOTTOM NAV ---------------- */
 
 @Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
     val context = LocalContext.current
-    val selectedIndex = remember { mutableIntStateOf(0) }
     val haptics = LocalHapticFeedback.current
     val lastStartClickMs = remember { mutableLongStateOf(0L) }
     Box(
@@ -300,14 +314,14 @@ fun BottomNavigationBar() {
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 BottomNavItem(
                     icon = Icons.Filled.Home,
-                    selected = selectedIndex.intValue == 0,
-                    onClick = { selectedIndex.intValue = 0 }
+                    selected = selectedIndex == 0,
+                    onClick = { onSelect(0) }
                 )
                 BottomNavItem(
                     icon = Icons.Filled.Map,
-                    selected = selectedIndex.intValue == 1,
+                    selected = selectedIndex == 1,
                     onClick = {
-                        selectedIndex.intValue = 1
+                        onSelect(1)
                         context.startActivity(Intent(context, MapsHubActivity::class.java))
                     }
                 )
@@ -316,13 +330,13 @@ fun BottomNavigationBar() {
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 BottomNavItem(
                     icon = Icons.Filled.DirectionsRun,
-                    selected = selectedIndex.intValue == 2,
-                    onClick = { selectedIndex.intValue = 2 }
+                    selected = selectedIndex == 2,
+                    onClick = { onSelect(2) }
                 )
                 BottomNavItem(
                     icon = Icons.Filled.Person,
-                    selected = selectedIndex.intValue == 3,
-                    onClick = { selectedIndex.intValue = 3 }
+                    selected = selectedIndex == 3,
+                    onClick = { onSelect(3) }
                 )
             }
         }
