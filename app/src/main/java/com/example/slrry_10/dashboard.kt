@@ -51,7 +51,7 @@ private fun DashboardRoot() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { DashboardTopBar() },
+        topBar = { DashboardTopBar(onProfileClick = { selectedIndex.intValue = 3 }) },
         bottomBar = {
             BottomNavigationBar(
                 selectedIndex = selectedIndex.intValue,
@@ -91,9 +91,14 @@ private fun PlaceholderTabScreen(title: String, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardTopBar() {
+private fun DashboardTopBar(onProfileClick: () -> Unit) {
     CenterAlignedTopAppBar(
-        title = { Text("Dashboard", fontWeight = FontWeight.SemiBold) }
+        title = { Text("Dashboard", fontWeight = FontWeight.SemiBold) },
+        actions = {
+            IconButton(onClick = onProfileClick) {
+                Icon(Icons.Filled.Person, contentDescription = "Profile")
+            }
+        }
     )
 }
 
