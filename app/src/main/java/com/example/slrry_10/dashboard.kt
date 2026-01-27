@@ -48,12 +48,24 @@ class DashboardActivity : ComponentActivity() {
 @Composable
 private fun DashboardRoot() {
     val selectedIndex = remember { mutableIntStateOf(0) }
+    val currentTitle = when (selectedIndex.intValue) {
+        0 -> "Dashboard"
+        1 -> "Map"
+        2 -> "Run"
+        3 -> "Profile"
+        else -> "Dashboard"
+    }
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        topBar = { DashboardTopBar(onProfileClick = { selectedIndex.intValue = 3 }) },
+        topBar = {
+            DashboardTopBar(
+                title = currentTitle,
+                onProfileClick = { selectedIndex.intValue = 3 }
+            )
+        },
         bottomBar = {
             BottomNavigationBar(
                 selectedIndex = selectedIndex.intValue,
@@ -93,9 +105,12 @@ private fun PlaceholderTabScreen(title: String, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardTopBar(onProfileClick: () -> Unit) {
+private fun DashboardTopBar(
+    title: String,
+    onProfileClick: () -> Unit
+) {
     CenterAlignedTopAppBar(
-        title = { Text("Dashboard", fontWeight = FontWeight.SemiBold) },
+        title = { Text(title, fontWeight = FontWeight.SemiBold) },
         actions = {
             IconButton(onClick = onProfileClick) {
                 Icon(Icons.Filled.Person, contentDescription = "Profile")
