@@ -45,85 +45,7 @@ class DashboardActivity : ComponentActivity() {
     }
 }
 
-@Composable
-private fun DashboardRoot() {
-    val selectedIndex = remember { mutableIntStateOf(0) }
-    val currentTitle = when (selectedIndex.intValue) {
-        0 -> "Dashboard"
-        1 -> "Map"
-        2 -> "Run"
-        3 -> "Profile"
-        else -> "Dashboard"
-    }
-
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        topBar = {
-            DashboardTopBar(
-                title = currentTitle,
-                onProfileClick = { selectedIndex.intValue = 3 }
-            )
-        },
-        bottomBar = {
-            BottomNavigationBar(
-                selectedIndex = selectedIndex.intValue,
-                onSelect = { selectedIndex.intValue = it }
-            )
-        }
-    ) { innerPadding ->
-        DashboardContent(
-            selectedIndex = selectedIndex.intValue,
-            modifier = Modifier.padding(innerPadding)
-        )
-    }
-}
-
-@Composable
-private fun DashboardContent(selectedIndex: Int, modifier: Modifier = Modifier) {
-    when (selectedIndex) {
-        0 -> HomeScreen(modifier = modifier)
-        1 -> PlaceholderTabScreen(title = "Map", modifier = modifier)
-        2 -> PlaceholderTabScreen(title = "Run", modifier = modifier)
-        3 -> PlaceholderTabScreen(title = "Profile", modifier = modifier)
-        else -> HomeScreen(modifier = modifier)
-    }
-}
-
-@Composable
-private fun PlaceholderTabScreen(title: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("$title tab (coming soon)", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DashboardTopBar(
-    title: String,
-    onProfileClick: () -> Unit
-) {
-    CenterAlignedTopAppBar(
-        title = {
-            Text(
-                title,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 20.sp
-            )
-        },
-        actions = {
-            IconButton(onClick = onProfileClick) {
-                Icon(Icons.Filled.Person, contentDescription = "Profile")
-            }
-        }
-    )
-}
+private val DashAccentGreen = Color(0xFFB5FF00)
 
 /* ---------------- HOME SCREEN ---------------- */
 
@@ -293,14 +215,15 @@ fun SuggestedWorkoutsSection() {
 
                 Spacer(Modifier.height(12.dp))
 
-                DashboardPrimaryButton(
-                    text = "Start now",
-                    onClick = {
-                        Toast.makeText(context, "Workout start (coming soon)", Toast.LENGTH_SHORT)
-                            .show()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Button(
+                    onClick = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DashAccentGreen
+                    )
+                ) {
+                    Text("Start now", color = Color.Black)
+                }
             }
         }
     }
@@ -365,8 +288,13 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
             DashboardPrimaryButton(
                 text = "Start now",
                 onClick = {},
-                modifier = Modifier.fillMaxWidth()
-            )
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DashAccentGreen
+                )
+            ) {
+                Text("Start now", color = Color.Black)
+            }
         }
     }
 }
@@ -455,11 +383,9 @@ fun BottomNavigationBar(
             },
             modifier = Modifier
                 .size(88.dp)
-                .offset(y = (-20).dp),
-            shape = CircleShape,
-            containerColor = Color(0xFFB6FF00),
-            contentColor = Color.Black,
-            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                .offset(y = (-20).dp)
+                .background(DashAccentGreen, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
             Text("START", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
