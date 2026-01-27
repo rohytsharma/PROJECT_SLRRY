@@ -138,6 +138,13 @@ private fun ForgotPasswordEmailScreen(
             fontSize = 14.sp
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "You’ll receive a 6-digit code in your inbox.",
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
+
         Spacer(modifier = Modifier.height(18.dp))
 
         OutlinedTextField(
