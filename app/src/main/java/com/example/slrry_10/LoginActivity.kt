@@ -76,6 +76,9 @@ class LoginActivity : ComponentActivity() {
                         onSubmitCode = {
                             // Fake success for now: back to login
                             route = LoginRoute.LOGIN
+                        },
+                        onResendCode = {
+                            // No-op until backend/Firebase
                         }
                     )
                 }
@@ -199,7 +202,8 @@ private fun ForgotPasswordEmailScreen(
 private fun ForgotPasswordCodeScreen(
     email: String,
     onBack: () -> Unit,
-    onSubmitCode: (String) -> Unit
+    onSubmitCode: (String) -> Unit,
+    onResendCode: (() -> Unit)? = null
 ) {
     var code by remember { mutableStateOf("") }
     val canSubmit = code.trim().isNotBlank()
@@ -271,6 +275,18 @@ private fun ForgotPasswordCodeScreen(
         )
 
         Spacer(modifier = Modifier.height(22.dp))
+
+        if (onResendCode != null) {
+            Text(
+                text = "Resend code",
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clickable { onResendCode() },
+                color = Color.Black,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+        }
 
         Button(
             onClick = { onSubmitCode(code.trim()) },
