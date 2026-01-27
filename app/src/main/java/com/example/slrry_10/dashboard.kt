@@ -399,12 +399,21 @@ fun BottomNavItem(
         enabled = onClick != null,
         modifier = Modifier.size(48.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = icon.name,
-            tint = if (selected) Color.Black else Color(0xFF3A3A3A),
-            modifier = Modifier.size(26.dp)
-        )
+        Box(contentAlignment = Alignment.Center) {
+            if (selected) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .background(Color(0xFFB6FF00), CircleShape)
+                )
+            }
+            Icon(
+                imageVector = icon,
+                contentDescription = icon.name,
+                tint = Color.Black,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
