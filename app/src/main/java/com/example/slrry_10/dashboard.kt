@@ -265,6 +265,7 @@ fun SuggestedWorkoutsSection() {
 
 @Composable
 fun ChallengesSection() {
+    val context = LocalContext.current
     Column {
 
         Row(
@@ -272,7 +273,14 @@ fun ChallengesSection() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Challenges", fontWeight = FontWeight.Bold)
-            Text("See all", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "See all",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.clickable {
+                    Toast.makeText(context, "Challenges (coming soon)", Toast.LENGTH_SHORT).show()
+                }
+            )
         }
 
         Spacer(Modifier.height(8.dp))
