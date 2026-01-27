@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -258,6 +260,7 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 @Composable
 fun BottomNavigationBar() {
     val context = LocalContext.current
+    val selectedIndex = remember { mutableIntStateOf(0) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -276,18 +279,32 @@ fun BottomNavigationBar() {
         ) {
 
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BottomNavItem(Icons.Filled.Home)
+                BottomNavItem(
+                    icon = Icons.Filled.Home,
+                    selected = selectedIndex.intValue == 0,
+                    onClick = { selectedIndex.intValue = 0 }
+                )
                 BottomNavItem(
                     icon = Icons.Filled.Map,
+                    selected = selectedIndex.intValue == 1,
                     onClick = {
+                        selectedIndex.intValue = 1
                         context.startActivity(Intent(context, MapsHubActivity::class.java))
                     }
                 )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BottomNavItem(Icons.Filled.DirectionsRun)
-                BottomNavItem(Icons.Filled.Person)
+                BottomNavItem(
+                    icon = Icons.Filled.DirectionsRun,
+                    selected = selectedIndex.intValue == 2,
+                    onClick = { selectedIndex.intValue = 2 }
+                )
+                BottomNavItem(
+                    icon = Icons.Filled.Person,
+                    selected = selectedIndex.intValue == 3,
+                    onClick = { selectedIndex.intValue = 3 }
+                )
             }
         }
 
@@ -310,11 +327,15 @@ fun BottomNavigationBar() {
 }
 
 @Composable
-fun BottomNavItem(icon: ImageVector, onClick: (() -> Unit)? = null) {
+fun BottomNavItem(
+    icon: ImageVector,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
     Icon(
         icon,
         null,
-        tint = Color.Black,
+        tint = if (selected) Color.Black else Color(0xFF3A3A3A),
         modifier = Modifier
             .size(26.dp)
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
