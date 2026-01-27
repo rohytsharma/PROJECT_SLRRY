@@ -247,15 +247,14 @@ fun SuggestedWorkoutsSection() {
 
                 Spacer(Modifier.height(12.dp))
 
-                Button(
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFB6FF00)
-                    )
-                ) {
-                    Text("Start now", color = Color.Black)
-                }
+                DashboardPrimaryButton(
+                    text = "Start now",
+                    onClick = {
+                        Toast.makeText(context, "Workout start (coming soon)", Toast.LENGTH_SHORT)
+                            .show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -315,16 +314,29 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 
             Spacer(Modifier.height(12.dp))
 
-            Button(
+            DashboardPrimaryButton(
+                text = "Start now",
                 onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFB6FF00)
-                )
-            ) {
-                Text("Start now", color = Color.Black)
-            }
+                modifier = Modifier.fillMaxWidth()
+            )
         }
+    }
+}
+
+@Composable
+private fun DashboardPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 46.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB6FF00)),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(text, color = Color.Black, fontWeight = FontWeight.SemiBold)
     }
 }
 
