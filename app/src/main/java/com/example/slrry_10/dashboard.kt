@@ -161,15 +161,19 @@ fun OverviewItem(value: String, label: String) {
 
 @Composable
 fun PlaceholderCard(title: String, height: Dp) {
-    Card(shape = RoundedCornerShape(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(height)
-                .background(Color(0xFFEDEDED)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
-            Text(title, color = Color.Gray)
+            Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
