@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -200,6 +202,7 @@ private fun ForgotPasswordCodeScreen(
     onSubmitCode: (String) -> Unit
 ) {
     var code by remember { mutableStateOf("") }
+    val canSubmit = code.trim().isNotBlank()
 
     Column(
         modifier = Modifier
@@ -254,6 +257,7 @@ private fun ForgotPasswordCodeScreen(
             onValueChange = { code = it },
             placeholder = { Text("Verification code") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -270,6 +274,7 @@ private fun ForgotPasswordCodeScreen(
 
         Button(
             onClick = { onSubmitCode(code.trim()) },
+            enabled = canSubmit,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp),
