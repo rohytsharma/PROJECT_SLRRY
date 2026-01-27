@@ -46,6 +46,9 @@ class LoginActivity : ComponentActivity() {
                         // For now (until Firebase): login -> dashboard
                         startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
                         finish()
+                    },
+                    onForgotPassword = {
+                        // wired in next commit
                     }
                 )
             }
@@ -56,7 +59,8 @@ class LoginActivity : ComponentActivity() {
 @Composable
 fun LoginScreen(
     onBack: () -> Unit = {},
-    onLogin: () -> Unit = {}
+    onLogin: () -> Unit = {},
+    onForgotPassword: () -> Unit = {}
 ) {
 
     var username by remember { mutableStateOf("") }
@@ -66,7 +70,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(PageBg)
             .padding(24.dp),
         verticalArrangement = Arrangement.Top
     ) {
@@ -88,7 +92,7 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .size(50.dp)
-                    .background(Color(0xFFB5FF00), CircleShape)
+                    .background(AccentGreen, CircleShape)
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
@@ -115,8 +119,8 @@ fun LoginScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                unfocusedContainerColor = Color(0xFFF6F6F6),
-                focusedContainerColor = Color(0xFFF6F6F6)
+                unfocusedContainerColor = FieldBg,
+                focusedContainerColor = FieldBg
             )
         )
 
@@ -147,12 +151,23 @@ fun LoginScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                unfocusedContainerColor = Color(0xFFF6F6F6),
-                focusedContainerColor = Color(0xFFF6F6F6)
+                unfocusedContainerColor = FieldBg,
+                focusedContainerColor = FieldBg
             )
         )
 
         Spacer(modifier = Modifier.height(40.dp))
+
+        Text(
+            text = "Forgot password?",
+            modifier = Modifier
+                .align(Alignment.End)
+                .clickable { onForgotPassword() },
+            color = Color.Black,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         // LOGIN BUTTON
         Button(
@@ -162,7 +177,7 @@ fun LoginScreen(
                 .height(55.dp),
             shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFB5FF00)
+                containerColor = AccentGreen
             )
         ) {
             Text(
