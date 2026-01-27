@@ -182,7 +182,11 @@ fun PlaceholderCard(title: String, height: Dp) {
 
 @Composable
 fun RecentActivityCard() {
-    Card(shape = RoundedCornerShape(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Column(Modifier.padding(16.dp)) {
 
             Text("Morning run", fontWeight = FontWeight.Bold)
@@ -205,10 +209,14 @@ fun RecentActivityCard() {
                 Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .background(Color(0xFFEDEDED), RoundedCornerShape(12.dp)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Map (coming soon)", fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    "Map (coming soon)",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
