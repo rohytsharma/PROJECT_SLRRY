@@ -58,7 +58,33 @@ private fun DashboardRoot() {
             )
         }
     ) { innerPadding ->
-        HomeScreen(modifier = Modifier.padding(innerPadding))
+        DashboardContent(
+            selectedIndex = selectedIndex.intValue,
+            modifier = Modifier.padding(innerPadding)
+        )
+    }
+}
+
+@Composable
+private fun DashboardContent(selectedIndex: Int, modifier: Modifier = Modifier) {
+    when (selectedIndex) {
+        0 -> HomeScreen(modifier = modifier)
+        1 -> PlaceholderTabScreen(title = "Map", modifier = modifier)
+        2 -> PlaceholderTabScreen(title = "Run", modifier = modifier)
+        3 -> PlaceholderTabScreen(title = "Profile", modifier = modifier)
+        else -> HomeScreen(modifier = modifier)
+    }
+}
+
+@Composable
+private fun PlaceholderTabScreen(title: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("$title tab (coming soon)", color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
