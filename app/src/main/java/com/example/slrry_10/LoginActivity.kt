@@ -254,6 +254,17 @@ private fun ForgotPasswordCodeScreen(
             fontSize = 14.sp
         )
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "Change email",
+            modifier = Modifier
+                .align(Alignment.Start)
+                .clickable { onBack() },
+            color = Color.Black,
+            fontWeight = FontWeight.SemiBold
+        )
+
         Spacer(modifier = Modifier.height(18.dp))
 
         OutlinedTextField(
