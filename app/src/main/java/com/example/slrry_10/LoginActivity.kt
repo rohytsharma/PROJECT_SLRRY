@@ -269,7 +269,9 @@ private fun ForgotPasswordCodeScreen(
 
         OutlinedTextField(
             value = code,
-            onValueChange = { code = it },
+            onValueChange = { input ->
+                code = input.filter { it.isDigit() }.take(6)
+            },
             placeholder = { Text("Verification code") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
