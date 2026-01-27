@@ -360,15 +360,10 @@ fun BottomNavigationBar(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BottomNavItem(
-                    icon = Icons.Filled.DirectionsRun,
-                    selected = selectedIndex == 2,
-                    onClick = { onSelect(2) }
-                )
+                BottomNavItem(Icons.Filled.DirectionsRun)
                 BottomNavItem(
                     icon = Icons.Filled.Person,
-                    selected = selectedIndex == 3,
-                    onClick = { onSelect(3) }
+                    onClick = { context.startActivity(Intent(context, ProfileActivity::class.java)) }
                 )
             }
         }

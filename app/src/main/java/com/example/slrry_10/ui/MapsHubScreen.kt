@@ -31,9 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import com.example.slrry_10.FriendsLeaderboardActivity
 import com.example.slrry_10.model.AreaModel
 import com.example.slrry_10.model.LocationModel
 import com.example.slrry_10.viewmodel.MapsTab
@@ -67,6 +70,7 @@ fun MapsHubScreen(
     mapLibreMap: MapLibreMap?,
     onBack: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
     val accent = Color(0xFFB8FF3A)
     val text = Color(0xFF111416)
 
@@ -144,7 +148,11 @@ fun MapsHubScreen(
                     fontWeight = FontWeight.Bold,
                     color = text
                 )
-                IconButton(onClick = { /* Leaderboard action can be wired later */ }) {
+                IconButton(
+                    onClick = {
+                        context.startActivity(Intent(context, FriendsLeaderboardActivity::class.java))
+                    }
+                ) {
                     Icon(Icons.Filled.Leaderboard, contentDescription = "Leaderboard", tint = text)
                 }
             }
