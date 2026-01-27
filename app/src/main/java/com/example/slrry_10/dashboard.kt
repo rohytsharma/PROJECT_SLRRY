@@ -135,6 +135,8 @@ fun QuickOverviewCard() {
                 Text("This week", color = Color.Gray)
             }
 
+            Divider(Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
             Spacer(Modifier.height(16.dp))
 
             Row(
