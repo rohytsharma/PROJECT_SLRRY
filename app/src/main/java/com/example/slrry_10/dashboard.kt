@@ -332,14 +332,18 @@ fun BottomNavItem(
     selected: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
-    Icon(
-        icon,
-        null,
-        tint = if (selected) Color.Black else Color(0xFF3A3A3A),
-        modifier = Modifier
-            .size(26.dp)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-    )
+    IconButton(
+        onClick = { onClick?.invoke() },
+        enabled = onClick != null,
+        modifier = Modifier.size(48.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = icon.name,
+            tint = if (selected) Color.Black else Color(0xFF3A3A3A),
+            modifier = Modifier.size(26.dp)
+        )
+    }
 }
 
 /* ---------------- PREVIEW ---------------- */
