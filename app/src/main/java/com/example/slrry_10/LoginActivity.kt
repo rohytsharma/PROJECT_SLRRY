@@ -46,18 +46,219 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             SLRRY_10Theme {
-                LoginScreen(
-                    onBack = { finish() },
-                    onLogin = {
-                        // For now (until Firebase): login -> dashboard
-                        startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
-                        finish()
-                    },
-                    onForgotPassword = {
-                        // wired in next commit
-                    }
+                var route by remember { mutableStateOf(LoginRoute.LOGIN) }
+                var resetEmail by remember { mutableStateOf("") }
+
+                when (route) {
+                    LoginRoute.LOGIN -> LoginScreen(
+                        onBack = { finish() },
+                        onLogin = {
+                            // For now (until Firebase): login -> dashboard
+                            startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
+                            finish()
+                        },
+                        onForgotPassword = { route = LoginRoute.FORGOT_EMAIL }
+                    )
+
+                    LoginRoute.FORGOT_EMAIL -> ForgotPasswordEmailScreen(
+                        onBack = { route = LoginRoute.LOGIN },
+                        onSubmitEmail = { email ->
+                            resetEmail = email
+                            route = LoginRoute.FORGOT_CODE
+                        }
+                    )
+
+                    LoginRoute.FORGOT_CODE -> ForgotPasswordCodeScreen(
+                        email = resetEmail,
+                        onBack = { route = LoginRoute.FORGOT_EMAIL },
+                        onSubmitCode = {
+                            // Fake success for now: back to login
+                            route = LoginRoute.LOGIN
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForgotPasswordEmailScreen(
+    onBack: () -> Unit,
+    onSubmitEmail: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PageBg)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Top
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Reset\npassword",
+                fontSize = 35.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .background(AccentGreen, CircleShape)
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.Black
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Enter your email and we’ll send a verification code.",
+            color = Color.Black,
+            fontSize = 14.sp
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            placeholder = { Text("Email") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                unfocusedContainerColor = FieldBg,
+                focusedContainerColor = FieldBg
+            )
+        )
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        Button(
+            onClick = { onSubmitEmail(email.trim()) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp),
+            shape = RoundedCornerShape(25.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
+        ) {
+            Text(
+                text = "Submit",
+                color = Color.Black,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ForgotPasswordCodeScreen(
+    email: String,
+    onBack: () -> Unit,
+    onSubmitCode: (String) -> Unit
+) {
+    var code by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PageBg)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Top
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Enter\ncode",
+                fontSize = 35.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .background(AccentGreen, CircleShape)
+                    .clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.Black
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = if (email.isBlank()) {
+                "Enter the verification code sent to your email."
+            } else {
+                "Enter the verification code sent to $email."
+            },
+            color = Color.Black,
+            fontSize = 14.sp
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        OutlinedTextField(
+            value = code,
+            onValueChange = { code = it },
+            placeholder = { Text("Verification code") },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                unfocusedContainerColor = FieldBg,
+                focusedContainerColor = FieldBg
+            )
+        )
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        Button(
+            onClick = { onSubmitCode(code.trim()) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp),
+            shape = RoundedCornerShape(25.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
+        ) {
+            Text(
+                text = "Submit",
+                color = Color.Black,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
