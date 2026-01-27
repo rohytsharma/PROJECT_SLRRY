@@ -186,7 +186,7 @@ fun SuggestedWorkoutsSection() {
                     onClick = {},
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFB6FF00)
+                        containerColor = DashAccentGreen
                     )
                 ) {
                     Text("Start now", color = Color.Black)
@@ -246,7 +246,7 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
                 onClick = {},
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFB6FF00)
+                    containerColor = DashAccentGreen
                 )
             ) {
                 Text("Start now", color = Color.Black)
@@ -297,7 +297,7 @@ fun BottomNavigationBar() {
             Modifier
                 .size(88.dp)
                 .offset(y = (-20).dp)
-                .background(Color(0xFFB6FF00), CircleShape),
+                .background(DashAccentGreen, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
