@@ -152,7 +152,7 @@ fun RecentActivityCard() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("5 KM")
-                Text("33:11 / KM")
+                Text("6:38 min/km")
                 Text("30 M")
             }
 
