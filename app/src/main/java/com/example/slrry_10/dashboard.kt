@@ -43,6 +43,8 @@ class DashboardActivity : ComponentActivity() {
     }
 }
 
+private val DashAccentGreen = Color(0xFFB5FF00)
+
 /* ---------------- HOME SCREEN ---------------- */
 
 @Composable
