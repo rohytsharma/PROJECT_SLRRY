@@ -29,6 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
 
+private val AccentGreen = Color(0xFFB5FF00)
+private val FieldBg = Color(0xFFF6F6F6)
+private val PageBg = Color.White
+
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
