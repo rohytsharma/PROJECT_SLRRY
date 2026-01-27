@@ -2,6 +2,7 @@ package com.example.slrry_10
 
 import android.os.Bundle
 import android.content.Intent
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,8 +16,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -261,6 +265,8 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 fun BottomNavigationBar() {
     val context = LocalContext.current
     val selectedIndex = remember { mutableIntStateOf(0) }
+    val haptics = LocalHapticFeedback.current
+    val lastStartClickMs = remember { mutableLongStateOf(0L) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -308,20 +314,23 @@ fun BottomNavigationBar() {
             }
         }
 
-        Box(
-            Modifier
+        FloatingActionButton(
+            onClick = {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastStartClickMs.longValue < 750) return@FloatingActionButton
+                lastStartClickMs.longValue = now
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                context.startActivity(Intent(context, StartRunActivity::class.java))
+            },
+            modifier = Modifier
                 .size(88.dp)
-                .offset(y = (-20).dp)
-                .background(Color(0xFFB6FF00), CircleShape),
-            contentAlignment = Alignment.Center
+                .offset(y = (-20).dp),
+            shape = CircleShape,
+            containerColor = Color(0xFFB6FF00),
+            contentColor = Color.Black,
+            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
         ) {
-            Text(
-                "START",
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable {
-                    context.startActivity(Intent(context, StartRunActivity::class.java))
-                }
-            )
+            Text("START", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
 }
