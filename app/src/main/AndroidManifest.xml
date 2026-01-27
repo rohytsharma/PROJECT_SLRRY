@@ -51,6 +51,16 @@
             android:label="Login"
             android:theme="@style/Theme.SLRRY_10" />
         <activity
+            android:name=".FriendsLeaderboardActivity"
+            android:exported="false"
+            android:label="Leaderboard"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="Profile"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
             android:name=".PasswordActivity"
             android:exported="false"
             android:label="Sign Up"

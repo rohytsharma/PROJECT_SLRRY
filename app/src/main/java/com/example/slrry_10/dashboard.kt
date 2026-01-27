@@ -287,7 +287,10 @@ fun BottomNavigationBar() {
 
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 BottomNavItem(Icons.Filled.DirectionsRun)
-                BottomNavItem(Icons.Filled.Person)
+                BottomNavItem(
+                    icon = Icons.Filled.Person,
+                    onClick = { context.startActivity(Intent(context, ProfileActivity::class.java)) }
+                )
             }
         }
 
