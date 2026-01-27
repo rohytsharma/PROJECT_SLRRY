@@ -89,6 +89,7 @@ private fun ForgotPasswordEmailScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
+    val canSubmit = email.trim().isNotBlank()
 
     Column(
         modifier = Modifier
@@ -175,6 +176,7 @@ private fun ForgotPasswordEmailScreen(
                     onSubmitEmail(trimmed)
                 }
             },
+            enabled = canSubmit,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp),
