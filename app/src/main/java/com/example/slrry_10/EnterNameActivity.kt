@@ -79,6 +79,7 @@ fun EnterNameScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFF5F1EB))
             .padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
     ) {
@@ -170,7 +171,7 @@ private fun ProgressBar(step: Int, totalSteps: Int = 3) {
     val fraction = (step.toFloat() / totalSteps.toFloat()).coerceIn(0f, 1f)
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = step.toString(),
+            text = "$step/$totalSteps",
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
         )
