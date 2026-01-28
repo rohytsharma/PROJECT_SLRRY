@@ -22,8 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -110,7 +108,7 @@ fun GenderScreen(
         Spacer(modifier = Modifier.height(28.dp))
         Progress(step = step, totalSteps = totalSteps)
         Spacer(modifier = Modifier.height(24.dp))
-    Text(
+        Text(
             text = "WHAT'S YOUR GENDER?",
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold
