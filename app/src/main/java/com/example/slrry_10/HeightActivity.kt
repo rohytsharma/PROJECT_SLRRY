@@ -105,7 +105,7 @@ fun HeightScreen(
     ) {
         Logo()
         Spacer(modifier = Modifier.height(28.dp))
-        Progress(step = 3, totalSteps = 7)
+        Progress(step = step, totalSteps = totalSteps)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "HOW TALL ARE YOU?",
