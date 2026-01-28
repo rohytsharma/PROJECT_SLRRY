@@ -30,6 +30,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -89,6 +90,9 @@ fun DistanceGoalScreen(
 ) {
     val minDistance = 0f
     val maxDistance = 100f
+    val snappedValue = remember(distanceKm, step) {
+        ((distanceKm + step / 2) / step) * step
+    }.coerceIn(minDistance.toInt(), maxDistance.toInt())
 
     Column(
         modifier = Modifier
@@ -121,12 +125,13 @@ fun DistanceGoalScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val sliderValue = distanceKm.toFloat()
+            val sliderValue = snappedValue.toFloat()
             Slider(
                 value = sliderValue,
                 onValueChange = { onDistanceChange(it.toInt()) },
+                onValueChangeFinished = { onDistanceChange(snappedValue) },
                 valueRange = minDistance..maxDistance,
-                steps = 100, // 1km increments (0, 1, 2, ..., 100)
+                steps = ((maxDistance - minDistance) / step).toInt() - 1, // snap to 'step' increments
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
                     thumbColor = Mint,
@@ -136,7 +141,7 @@ fun DistanceGoalScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
     Text(
-                text = "${distanceKm}km",
+                text = "${snappedValue}km",
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black

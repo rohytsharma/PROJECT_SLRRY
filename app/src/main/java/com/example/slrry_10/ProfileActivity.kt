@@ -7,7 +7,6 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.R
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -31,10 +30,10 @@ import androidx.compose.ui.unit.sp
 // Material Icons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
-import com.example.slrry.R
-import com.example.slrry.ui.theme.Background
-import com.example.slrry.ui.theme.RedMain
-import com.example.slrry.ui.theme.TextGray
+import com.example.slrry_10.R
+import com.example.slrry_10.ui.theme.Background
+import com.example.slrry_10.ui.theme.RedMain
+import com.example.slrry_10.ui.theme.TextGray
 
 // App colors
 

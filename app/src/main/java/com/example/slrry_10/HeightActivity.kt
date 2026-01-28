@@ -113,7 +113,7 @@ fun HeightScreen(
             fontWeight = FontWeight.ExtraBold
         )
         Spacer(modifier = Modifier.height(8.dp))
-    Text(
+        Text(
             text = "Select your height.",
             fontSize = 14.sp,
             color = Color(0xFF3F3F3F)
