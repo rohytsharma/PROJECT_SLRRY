@@ -110,8 +110,8 @@ fun RunningGoalScreen(
         Spacer(modifier = Modifier.height(20.dp))
         Progress(step = step, totalSteps = totalSteps)
         Spacer(modifier = Modifier.height(18.dp))
-    Text(
-            text = "WHAT'S YOU RUNNING GOAL?",
+        Text(
+            text = "WHAT'S YOUR RUNNING GOAL?",
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.fillMaxWidth()
