@@ -1,6 +1,11 @@
 package com.example.slrry_10
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.slrry_10.ui.theme.SLRRY_10Theme
 
 data class FriendUI(
     val name: String,
@@ -27,7 +33,9 @@ data class FriendUI(
 )
 
 @Composable
-fun FriendsLeaderboardUI() {
+fun FriendsLeaderboardUI(
+    onBack: () -> Unit = {}
+) {
 
     var searchText by remember { mutableStateOf("") }
 
@@ -58,7 +66,11 @@ fun FriendsLeaderboardUI() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = null)
+            Icon(
+                Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                modifier = Modifier.clickable { onBack() }
+            )
             Text("Leaderboard", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Icon(Icons.Default.Add, contentDescription = null)
         }
@@ -150,5 +162,17 @@ fun LeaderboardItem(rank: Int, friend: FriendUI) {
 )
 @Composable
 fun FriendsLeaderboardPreview() {
-    FriendsLeaderboardUI()
+    SLRRY_10Theme { FriendsLeaderboardUI() }
+}
+
+class FriendsLeaderboardActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            SLRRY_10Theme {
+                FriendsLeaderboardUI(onBack = { finish() })
+            }
+        }
+    }
 }
