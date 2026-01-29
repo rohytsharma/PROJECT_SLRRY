@@ -216,7 +216,8 @@ private fun EventOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .clickable { onSelect() },
+            .clickable { onSelect() }
+            .semantics { contentDescription = "Event option: $label" },
         shape = RoundedCornerShape(6.dp),
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,

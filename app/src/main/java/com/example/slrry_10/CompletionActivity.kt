@@ -170,7 +170,7 @@ private fun SuccessIcon() {
             // White checkmark
             Icon(
                 imageVector = Icons.Default.Check,
-                contentDescription = "Success",
+                contentDescription = "Success checkmark",
                 tint = Color.Green,
                 modifier = Modifier.size(40.dp)
             )

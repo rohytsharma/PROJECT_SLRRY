@@ -125,7 +125,7 @@ fun DistanceGoalScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val sliderValue = snappedValue.toFloat()
+            val sliderValue = remember { snappedValue.toFloat() }
             Slider(
                 value = sliderValue,
                 onValueChange = { onDistanceChange(it.toInt()) },

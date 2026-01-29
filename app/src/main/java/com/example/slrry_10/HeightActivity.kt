@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -95,6 +97,13 @@ fun HeightScreen(
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = heightRange.indexOf(selectedHeight).coerceAtLeast(0)
     )
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(selectedHeight) {
+        scope.launch {
+            val idx = heightRange.indexOf(selectedHeight).coerceAtLeast(0)
+            listState.animateScrollToItem(idx)
+        }
+    }
 
     Column(
         modifier = Modifier

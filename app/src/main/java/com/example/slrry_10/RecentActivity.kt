@@ -68,12 +68,14 @@ class RecentActivity : ComponentActivity() {
 @Composable
 fun RecentActivitiesScreen() {
     // Sample data - in real app, this would come from ViewModel/Repository
-    val activities = listOf(
-        RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
-        RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
-        RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
-        RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
-    )
+    val activities = remember {
+        listOf(
+            RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
+            RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
+            RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
+            RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
+        )
+    }
     
     val totalDistance = "0"
     val totalRuns = "0"
@@ -143,7 +145,7 @@ fun RecentActivitiesScreen() {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(activities) { activity ->
+            items(items = activities, key = { it.id }) { activity ->
                 ActivityCard(activity = activity)
             }
         }
@@ -170,13 +172,16 @@ private fun StatItem(value: String, label: String) {
 
 @Composable
 private fun ActivityCard(activity: RunActivity) {
+    val ctx = LocalContext.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { ctx.startActivity(Intent(ctx, RunningActivity::class.java)) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF0F8F0) // Light green tint
+            containerColor = Color(0xFFFFFFFF) // use white for better contrast
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier

@@ -373,8 +373,14 @@ fun BottomNavigationBar(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BottomNavItem(Icons.Filled.DirectionsRun)
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                BottomNavItem(
+                    icon = Icons.Filled.DirectionsRun,
+                    onClick = {
+                        val ctx = LocalContext.current
+                        ctx.startActivity(Intent(ctx, RecentActivity::class.java))
+                    }
+                )
                 BottomNavItem(
                     icon = Icons.Filled.Person,
                     onClick = { context.startActivity(Intent(context, ProfileActivity::class.java)) }

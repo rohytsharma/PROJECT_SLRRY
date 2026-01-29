@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.ui.theme.SLRRYTheme
@@ -65,16 +66,19 @@ class LeaderBoardActivity : ComponentActivity() {
 
 @Composable
 fun LeaderBoardScreen() {
-    val top3 = listOf(
+    val top3 = remember {
+        listOf(
         FriendRank(rank = 2, name = "Lokeece", points = 0, rankChange = 0),
         FriendRank(rank = 1, name = "Richu", points = 0, rankChange = 0),
         FriendRank(rank = 3, name = "Rohit", points = 0, rankChange = 0),
     )
-    val others = listOf(
-        FriendRank(4, "Yuva", 0, 0),
-        FriendRank(5, "Sameer", 0, 0),
-        FriendRank(6, "yuvati", 0, 0),
-    )
+    val others = remember {
+        listOf(
+            FriendRank(4, "Yuva", 0, 0),
+            FriendRank(5, "Sameer", 0, 0),
+            FriendRank(6, "yuvati", 0, 0),
+        )
+    }
 
     val gradient = Brush.verticalGradient(
         colors = listOf(
@@ -128,7 +132,7 @@ fun LeaderBoardScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(others) { friend ->
+                    items(items = others, key = { it.rank }) { friend ->
                         FriendRow(friend)
                     }
                 }
@@ -144,8 +148,9 @@ private fun Header() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val ctx = LocalContext.current
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { /* TODO: Back */ }) {
+            IconButton(onClick = { (ctx as? ComponentActivity)?.finish() }) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF2F2F2F))
             }
             Text(
