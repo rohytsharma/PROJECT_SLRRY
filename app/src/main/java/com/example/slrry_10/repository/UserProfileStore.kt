@@ -11,8 +11,18 @@ object UserProfileStore {
 
     suspend fun updateCurrentUserFields(fields: Map<String, Any?>) {
         val uid = auth.currentUser?.uid ?: return
+        val normalized = fields.toMutableMap()
+        val displayName = (fields["displayName"] as? String)
+            ?: (fields["name"] as? String)
+        if (!displayName.isNullOrBlank()) {
+            normalized["displayNameLower"] = displayName.trim().lowercase()
+        }
+        val email = (fields["email"] as? String)
+        if (!email.isNullOrBlank()) {
+            normalized["emailLower"] = email.trim().lowercase()
+        }
         suspendCancellableCoroutine<Unit> { cont ->
-            db.reference.child("users").child(uid).updateChildren(fields)
+            db.reference.child("users").child(uid).updateChildren(normalized)
                 .addOnSuccessListener { cont.resume(Unit) }
                 .addOnFailureListener { cont.resume(Unit) }
         }

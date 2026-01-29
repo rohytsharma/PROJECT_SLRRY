@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,7 +61,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.model.RunSession
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
+import com.example.slrry_10.repository.FriendsRepository
+import com.example.slrry_10.repository.UserSummary
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
+import com.example.slrry_10.ui.theme.Mint
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -56,6 +73,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.coroutines.resume
+import kotlinx.coroutines.launch
 
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +107,11 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     var totalHours by remember { mutableStateOf(0.0) }
     var totalKcal by remember { mutableStateOf(0.0) }
     var streakDays by remember { mutableStateOf<List<StreakDay>>(emptyList()) }
+    val friendsRepo = remember { FriendsRepository() }
+    var friends by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
+    var incomingRequests by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
+    var showAddFriend by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val (nameFromDb, emailFromDb) = fetchUserProfile()
@@ -126,39 +149,263 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         }
 
         streakDays = buildStreakDays(runs)
+        friends = friendsRepo.listFriends()
+        incomingRequests = friendsRepo.listIncomingFriendRequests()
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(background)
+            .background(background),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        ProfileHeader(
-            onBack = onBack,
-            headerColor = header,
-            displayName = displayName,
-            subtitle = level,
-            email = email
-        )
+        item {
+            ProfileHeader(
+                onBack = onBack,
+                headerColor = header,
+                displayName = displayName,
+                subtitle = level,
+                email = email
+            )
+        }
 
+        item {
         ProgressCard(
             title = "Weekly Distance",
-            current = weekDistanceKm,
-            goal = (weeklyGoalKm ?: 0).coerceAtLeast(1),
+                current = weekDistanceKm,
+                goal = (weeklyGoalKm ?: 0).coerceAtLeast(1),
             unit = "km",
             textGray = textGray
         )
+        }
 
+        item {
         ProgressCard(
             title = "Active Time",
-            current = weekActiveHours,
+                current = weekActiveHours,
             goal = 25,
             unit = "hrs",
             textGray = textGray
         )
+        }
 
-        AchievementCard(totalDistanceKm = totalDistanceKm, totalHours = totalHours, totalKcal = totalKcal)
-        StreaksCard(days = streakDays)
+        item {
+            AchievementCard(totalDistanceKm = totalDistanceKm, totalHours = totalHours, totalKcal = totalKcal)
+        }
+
+        item {
+            StreaksCard(days = streakDays)
+        }
+
+        item {
+            FriendsCard(
+                friends = friends,
+                onAddClick = { showAddFriend = true }
+            )
+        }
+
+        item {
+            FriendRequestsCard(
+                requests = incomingRequests,
+                onAccept = { fromUid ->
+                    scope.launch {
+                        friendsRepo.acceptFriendRequest(fromUid)
+                        incomingRequests = friendsRepo.listIncomingFriendRequests()
+                        friends = friendsRepo.listFriends()
+                    }
+                }
+            )
+        }
+    }
+
+    if (showAddFriend) {
+        AddFriendDialog(
+            friendsRepo = friendsRepo,
+            onDismiss = { showAddFriend = false },
+            onFriendAdded = {
+                scope.launch {
+                    friends = friendsRepo.listFriends()
+                    incomingRequests = friendsRepo.listIncomingFriendRequests()
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun FriendsCard(
+    friends: List<UserSummary>,
+    onAddClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Friends", fontWeight = FontWeight.Bold)
+                IconButton(onClick = onAddClick) {
+                    Icon(Icons.Default.PersonAdd, contentDescription = "Add friend")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            if (friends.isEmpty()) {
+                Text("No friends yet. Tap + to add.", color = Color.Gray, fontSize = 12.sp)
+            } else {
+                friends.take(6).forEach { f ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(f.displayName, fontWeight = FontWeight.SemiBold)
+                            if (f.email.isNotBlank()) Text(f.email, fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+                if (friends.size > 6) {
+                    Text(
+                        text = "and ${friends.size - 6} more…",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddFriendDialog(
+    friendsRepo: FriendsRepository,
+    onDismiss: () -> Unit,
+    onFriendAdded: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        // "Show all users" when opening the dialog (paged).
+        isSearching = true
+        results = friendsRepo.listAllUsers(limit = 50)
+        isSearching = false
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add friend") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        isSearching = true
+                        scope.launch {
+                            results = if (it.trim().isBlank()) {
+                                friendsRepo.listAllUsers(limit = 50)
+                            } else {
+                                friendsRepo.searchUsersByNamePrefix(it)
+                            }
+                            isSearching = false
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text("Search by name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors()
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (isSearching) {
+                    Text("Searching…", fontSize = 12.sp, color = Color.Gray)
+                } else if (!isSearching && results.isEmpty()) {
+                    Text("No users found.", fontSize = 12.sp, color = Color.Gray)
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                results.take(10).forEach { u ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(u.displayName, fontWeight = FontWeight.SemiBold)
+                            if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    friendsRepo.sendFriendRequest(u.uid)
+                                    onFriendAdded()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+                        ) {
+                            Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+            ) { Text("Done") }
+        }
+    )
+}
+
+@Composable
+private fun FriendRequestsCard(
+    requests: List<UserSummary>,
+    onAccept: (fromUid: String) -> Unit
+) {
+    if (requests.isEmpty()) return
+
+    Card(
+        modifier = Modifier.padding(16.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Friend requests", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(10.dp))
+            requests.take(10).forEach { u ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(u.displayName, fontWeight = FontWeight.SemiBold)
+                        if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
+                    }
+                    Button(
+                        onClick = { onAccept(u.uid) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+                    ) {
+                        Text("Accept")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -258,18 +505,18 @@ private fun AchievementCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Total progress", fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
-            Row(
+        Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            verticalAlignment = Alignment.CenterVertically
+        ) {
                 ProgressStat(icon = "🏃", value = String.format("%.1f", totalDistanceKm), label = "km")
                 ProgressStat(icon = "⏱️", value = String.format("%.1f", totalHours), label = "hr")
                 ProgressStat(icon = "🔥", value = String.format("%.0f", totalKcal), label = "kcal")
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.EmojiEvents, contentDescription = null)
+            Icon(Icons.Default.EmojiEvents, contentDescription = null)
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Keep going — your streak is building up!")
             }
@@ -375,7 +622,7 @@ private suspend fun fetchUserProfile(): Pair<String?, String?> {
             }
             .addOnFailureListener {
                 cont.resume(Pair(null, null))
-            }
+        }
     }
 }
 

@@ -50,10 +50,15 @@ class FirebaseAuthManager(
     ) {
         val uid = user.uid
         val usersRef = db.reference.child("users").child(uid)
+        val email = (user.email ?: "").trim()
+        val fallbackNameFromEmail = email.substringBefore("@").replace('.', ' ').trim()
+        val resolvedName = (displayName ?: user.displayName ?: fallbackNameFromEmail).trim()
         val data = mapOf(
             "uid" to uid,
-            "email" to (user.email ?: ""),
-            "displayName" to (displayName ?: user.displayName ?: ""),
+            "email" to email,
+            "emailLower" to email.lowercase(),
+            "displayName" to resolvedName,
+            "displayNameLower" to resolvedName.lowercase(),
             "photoUrl" to (user.photoUrl?.toString() ?: ""),
             "emailVerified" to user.isEmailVerified,
             "updatedAt" to System.currentTimeMillis()
