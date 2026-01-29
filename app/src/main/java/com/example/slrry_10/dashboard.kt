@@ -266,8 +266,17 @@ fun ChallengesSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Challenges", fontWeight = FontWeight.Bold)
-            Text("See all", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "Challenges",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = Color(0xFF111416)
+            )
+            Text(
+                "See all",
+                fontSize = 12.sp,
+                color = Color(0xFF94A3B8)
+            )
         }
 
         Spacer(Modifier.height(8.dp))
