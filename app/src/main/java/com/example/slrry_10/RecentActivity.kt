@@ -68,12 +68,14 @@ class RecentActivity : ComponentActivity() {
 @Composable
 fun RecentActivitiesScreen() {
     // Sample data - in real app, this would come from ViewModel/Repository
-    val activities = listOf(
-        RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
-        RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
-        RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
-        RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
-    )
+    val activities = remember {
+        listOf(
+            RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
+            RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
+            RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
+            RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
+        )
+    }
     
     val totalDistance = "0"
     val totalRuns = "0"
@@ -143,7 +145,7 @@ fun RecentActivitiesScreen() {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(activities) { activity ->
+            items(items = activities, key = { it.id }) { activity ->
                 ActivityCard(activity = activity)
             }
         }
