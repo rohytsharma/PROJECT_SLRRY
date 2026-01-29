@@ -322,9 +322,15 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFB6FF00)
-                )
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                Text("Start now", color = Color.Black)
+                Text(
+                    "Start now",
+                    color = Color.Black,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
             }
         }
     }
