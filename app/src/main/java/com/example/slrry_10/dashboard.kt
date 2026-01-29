@@ -106,8 +106,17 @@ fun QuickOverviewCard() {
 @Composable
 fun OverviewItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text(label, fontSize = 12.sp, color = Color.Gray)
+        Text(
+            value,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111416)
+        )
+        Text(
+            label,
+            fontSize = 12.sp,
+            color = Color(0xFF7E868C)
+        )
     }
 }
 
