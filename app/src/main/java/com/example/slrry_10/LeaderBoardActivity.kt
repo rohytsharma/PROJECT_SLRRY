@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.ui.theme.SLRRYTheme
@@ -144,8 +145,9 @@ private fun Header() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val ctx = LocalContext.current
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { /* TODO: Back */ }) {
+            IconButton(onClick = { (ctx as? ComponentActivity)?.finish() }) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF2F2F2F))
             }
             Text(
