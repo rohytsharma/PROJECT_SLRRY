@@ -216,7 +216,8 @@ private fun OptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .clickable { onSelect() },
+            .clickable { onSelect() }
+            .semantics { contentDescription = "Gender option: $label" },
         shape = RoundedCornerShape(6.dp),
         border = BorderStroke(1.dp, Color(0xFFB8B8B8)),
         colors = CardDefaults.cardColors(containerColor = Color.White),
