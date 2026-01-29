@@ -198,8 +198,17 @@ fun SuggestedWorkoutsSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Suggested workouts", fontWeight = FontWeight.Bold)
-            Text("See all", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "Suggested workouts",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = Color(0xFF111416)
+            )
+            Text(
+                "See all",
+                fontSize = 12.sp,
+                color = Color(0xFF7E868C)
+            )
         }
 
         Spacer(Modifier.height(8.dp))
