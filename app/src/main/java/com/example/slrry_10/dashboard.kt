@@ -124,7 +124,10 @@ fun OverviewItem(value: String, label: String) {
 
 @Composable
 fun PlaceholderCard(title: String, height: Dp) {
-    Card(shape = RoundedCornerShape(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+    ) {
         Box(
             Modifier
                 .fillMaxWidth()
