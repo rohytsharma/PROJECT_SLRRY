@@ -8,13 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,11 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.slrry_10.repository.CapturedAreasRepository
+import com.example.slrry_10.repository.FriendsRepository
+import com.example.slrry_10.repository.UserSummary
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
 
-data class FriendUI(
-    val name: String,
-    val distance: Int
+private data class FriendAreaRow(
+    val user: UserSummary,
+    val totalArea: Double
 )
 
 @Composable
@@ -37,15 +37,17 @@ fun FriendsLeaderboardUI(
     onBack: () -> Unit = {}
 ) {
 
-    var searchText by remember { mutableStateOf("") }
+    val friendsRepo = remember { FriendsRepository() }
+    val areasRepo = remember { CapturedAreasRepository() }
+    var rows by remember { mutableStateOf<List<FriendAreaRow>>(emptyList()) }
 
-    val friends = remember {
-        mutableStateListOf(
-            FriendUI("Someone", 1020),
-            FriendUI("Sodul", 1010),
-            FriendUI("Sameer", 990),
-            FriendUI("yuvati", 958)
-        )
+    LaunchedEffect(Unit) {
+        val friends = friendsRepo.listFriends()
+        val computed = friends.map { f ->
+            val total = areasRepo.getAreasForUser(f.uid).sumOf { it.area }
+            FriendAreaRow(user = f, totalArea = total)
+        }.sortedByDescending { it.totalArea }
+        rows = computed
     }
 
     Column(
@@ -72,73 +74,29 @@ fun FriendsLeaderboardUI(
                 modifier = Modifier.clickable { onBack() }
             )
             Text("Leaderboard", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Icon(Icons.Default.Add, contentDescription = null)
-        }
-
-        // 🔹 Friends Section
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFF8C42))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-
-                Text("Friends", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { searchText = it },
-                    placeholder = { Text("Search Username") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                AddFriendRow("Someone")
-                Spacer(modifier = Modifier.height(8.dp))
-                AddFriendRow("Sodul")
-            }
+            Spacer(modifier = Modifier.width(24.dp))
         }
 
         // 🔹 Leaderboard List
-        LazyColumn {
-            itemsIndexed(friends.sortedByDescending { it.distance }) { index, user ->
-                LeaderboardItem(rank = index + 1, friend = user)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            items(items = rows, key = { it.user.uid }) { row ->
+                LeaderboardItem(
+                    name = row.user.displayName,
+                    points = String.format("%.0f", row.totalArea)
+                )
             }
         }
     }
 }
 
 @Composable
-fun AddFriendRow(name: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .background(Color.LightGray, RoundedCornerShape(30.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Person, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(name)
-        }
-        Icon(Icons.Default.PersonAdd, contentDescription = null)
-    }
-}
-
-@Composable
-fun LeaderboardItem(rank: Int, friend: FriendUI) {
+fun LeaderboardItem(name: String, points: String) {
     Card(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -147,9 +105,8 @@ fun LeaderboardItem(rank: Int, friend: FriendUI) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(rank.toString())
-            Text(friend.name)
-            Text(friend.distance.toString())
+            Text(name, fontWeight = FontWeight.SemiBold)
+            Text("$points m²", fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -61,6 +61,11 @@
             android:label="Profile"
             android:theme="@style/Theme.SLRRY_10" />
         <activity
+            android:name=".RecentActivity"
+            android:exported="false"
+            android:label="Recent"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
             android:name=".PasswordActivity"
             android:exported="false"
             android:label="Sign Up"

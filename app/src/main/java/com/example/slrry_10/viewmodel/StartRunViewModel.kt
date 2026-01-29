@@ -8,15 +8,21 @@ import com.example.slrry_10.model.RouteModel
 import com.example.slrry_10.model.RunSession
 import com.example.slrry_10.model.RunScreenState
 import com.example.slrry_10.model.SearchResult
+import com.example.slrry_10.repository.CapturedAreasRepository
+import com.example.slrry_10.repository.FriendsRepository
 import com.example.slrry_10.repository.LocationRepository
 import com.example.slrry_10.repository.UserRepo
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlin.math.cos
+import kotlin.math.absoluteValue
 
 enum class MapsTab { WORLD, PERSONAL, FRIENDS }
 
@@ -55,6 +61,19 @@ class StartRunViewModel(
     
     private val _uiState = MutableStateFlow(StartRunUiState())
     val uiState: StateFlow<StartRunUiState> = _uiState.asStateFlow()
+
+    private var timerJob: Job? = null
+    private var timerBaseMs: Long = 0L
+    private var accumulatedDurationSec: Long = 0L
+
+    private val friendsRepo = FriendsRepository()
+    private val areasRepo = CapturedAreasRepository()
+    private val auth = FirebaseAuth.getInstance()
+
+    init {
+        // Load user's captured areas for personal/friends maps.
+        refreshMyCapturedAreas()
+    }
     
     fun updateLocation(location: LocationModel) {
         // Use viewModelScope to ensure updates happen on correct thread
@@ -81,9 +100,15 @@ class StartRunViewModel(
     }
     
     fun startTracking() {
+        val now = System.currentTimeMillis()
+        // Reset timer accounting for a fresh run.
+        timerJob?.cancel()
+        accumulatedDurationSec = 0L
+        timerBaseMs = now
+
         val session = RunSession(
             id = System.currentTimeMillis().toString(),
-            startTime = System.currentTimeMillis(),
+            startTime = now,
             isActive = true
         )
         _uiState.value = _uiState.value.copy(
@@ -93,18 +118,28 @@ class StartRunViewModel(
             runPath = emptyList(),
             screenState = RunScreenState.RUNNING
         )
+
+        startTimer()
     }
     
     fun pauseTracking() {
+        val now = System.currentTimeMillis()
+        accumulatedDurationSec = computeDurationNow(now)
+        timerJob?.cancel()
+        timerJob = null
         _uiState.value = _uiState.value.copy(
             isTracking = false,
             isPaused = true,
+            currentSession = _uiState.value.currentSession?.copy(duration = accumulatedDurationSec),
             screenState = RunScreenState.PAUSED_WITH_OVERLAY,
             showMapInPaused = false
         )
     }
     
     fun resumeTracking() {
+        val now = System.currentTimeMillis()
+        timerBaseMs = now
+        startTimer()
         _uiState.value = _uiState.value.copy(
             isTracking = true,
             isPaused = false,
@@ -128,9 +163,21 @@ class StartRunViewModel(
     
     fun finishRun() {
         val currentState = _uiState.value
+        val now = System.currentTimeMillis()
+        val duration = computeDurationNow(now)
+        val distance = computeDistanceForPath(currentState.runPath)
+        val pace = computeAveragePace(distance, duration)
+
+        timerJob?.cancel()
+        timerJob = null
+        accumulatedDurationSec = duration
+
         val session = currentState.currentSession?.copy(
-            endTime = System.currentTimeMillis(),
+            endTime = now,
             path = currentState.runPath,
+            distance = distance,
+            duration = duration,
+            averagePace = pace,
             isActive = false
         )
         
@@ -156,6 +203,7 @@ class StartRunViewModel(
             screenState = RunScreenState.MAPS,
             mapsTab = MapsTab.PERSONAL
         )
+        refreshFriendsOwners()
     }
 
     fun backToSummaryFromMaps() {
@@ -164,13 +212,28 @@ class StartRunViewModel(
 
     fun setMapsTab(tab: MapsTab) {
         _uiState.value = _uiState.value.copy(mapsTab = tab)
+        if (tab == MapsTab.FRIENDS) {
+            refreshFriendsOwners()
+        }
     }
     
     fun stopTracking() {
         val currentState = _uiState.value
+        val now = System.currentTimeMillis()
+        val duration = computeDurationNow(now)
+        val distance = computeDistanceForPath(currentState.runPath)
+        val pace = computeAveragePace(distance, duration)
+
+        timerJob?.cancel()
+        timerJob = null
+        accumulatedDurationSec = duration
+
         val session = currentState.currentSession?.copy(
-            endTime = System.currentTimeMillis(),
+            endTime = now,
             path = currentState.runPath,
+            distance = distance,
+            duration = duration,
+            averagePace = pace,
             isActive = false
         )
         
@@ -203,20 +266,9 @@ class StartRunViewModel(
                 distance += calculateDistance(path[i - 1], path[i])
             }
             
-            // Calculate duration
-            val duration = if (session.startTime > 0) {
-                (System.currentTimeMillis() - session.startTime) / 1000
-            } else 0L
-            
-            // Calculate average pace
-            val pace = if (distance > 0 && duration > 0) {
-                val paceSeconds = (duration / (distance / 1000)).toInt()
-                val minutes = paceSeconds / 60
-                val seconds = paceSeconds % 60
-                "${minutes}'${seconds.toString().padStart(2, '0')}''"
-            } else {
-                "0'00''"
-            }
+            // Duration comes from the run timer (so paused time isn't counted).
+            val duration = currentState.currentSession?.duration ?: 0L
+            val pace = computeAveragePace(distance, duration)
             
             val updatedSession = session.copy(
                 path = path,
@@ -306,6 +358,10 @@ class StartRunViewModel(
                 capturedAreas = currentState.capturedAreas + areaModel,
                 currentAreaPolygon = emptyList()
             )
+            // Persist for friends map + leaderboard.
+            viewModelScope.launch {
+                areasRepo.addArea(areaModel)
+            }
         } else {
             _uiState.value = currentState.copy(
                 isCapturingArea = false,
@@ -337,12 +393,13 @@ class StartRunViewModel(
 
     private fun ensureDemoOwners(state: StartRunUiState): StartRunUiState {
         // If we already have demo owners, keep them stable.
-        if (state.worldOwners.isNotEmpty() || state.friendsOwners.isNotEmpty()) return state
+        // WORLD is demo; FRIENDS is loaded from RTDB.
+        if (state.worldOwners.isNotEmpty()) return state
 
         val loc = state.currentLocation ?: LocationModel(0.0, 0.0)
 
         // If the user has no captured areas yet, we still keep PERSONAL empty,
-        // but WORLD/FRIENDS will show example zones so the screen isn't blank.
+        // but WORLD will show example zones so the screen isn't blank.
         val youAreas = state.capturedAreas
 
         fun squareArea(center: LocationModel, meters: Double): AreaModel {
@@ -388,26 +445,89 @@ class StartRunViewModel(
             )
         }
 
-        val friends = buildList {
-            add(
-                ZoneOwner(
-                    id = "friend_1",
-                    displayName = "Friend 1",
-                    colorArgb = 0xFF7C5CFF.toInt(), // purple
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude + 0.0009, longitude = loc.longitude - 0.0014), 110.0))
-                )
-            )
-            add(
-                ZoneOwner(
-                    id = "friend_2",
-                    displayName = "Friend 2",
-                    colorArgb = 0xFFFF8A3D.toInt(), // orange
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude - 0.0010, longitude = loc.longitude + 0.0016), 130.0))
-                )
-            )
-        }
+        return state.copy(worldOwners = world)
+    }
 
-        return state.copy(worldOwners = world, friendsOwners = friends)
+    private fun refreshMyCapturedAreas() {
+        val uid = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            val areas = areasRepo.getAreasForUser(uid)
+            _uiState.value = _uiState.value.copy(capturedAreas = areas)
+        }
+    }
+
+    private fun refreshFriendsOwners() {
+        viewModelScope.launch {
+            val friends = friendsRepo.listFriends()
+            if (friends.isEmpty()) {
+                _uiState.value = _uiState.value.copy(friendsOwners = emptyList())
+                return@launch
+            }
+
+            val owners = friends.map { f ->
+                val areas = areasRepo.getAreasForUser(f.uid)
+                ZoneOwner(
+                    id = f.uid,
+                    displayName = f.displayName,
+                    colorArgb = colorForUid(f.uid),
+                    areas = areas
+                )
+            }
+            _uiState.value = _uiState.value.copy(friendsOwners = owners)
+        }
+    }
+
+    private fun colorForUid(uid: String): Int {
+        // Deterministic bright-ish palette by hashing uid.
+        val h = uid.hashCode().absoluteValue
+        val r = 80 + (h % 140)
+        val g = 80 + ((h / 7) % 140)
+        val b = 80 + ((h / 13) % 140)
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
+    private fun startTimer() {
+        // Only one timer at a time.
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                val state = _uiState.value
+                if (!state.isTracking) continue
+                val now = System.currentTimeMillis()
+                val duration = computeDurationNow(now)
+                val session = state.currentSession ?: continue
+                val pace = computeAveragePace(session.distance, duration)
+                _uiState.value = state.copy(
+                    currentSession = session.copy(
+                        duration = duration,
+                        averagePace = pace
+                    )
+                )
+            }
+        }
+    }
+
+    private fun computeDurationNow(nowMs: Long): Long {
+        val elapsedSec = ((nowMs - timerBaseMs).coerceAtLeast(0L)) / 1000L
+        return accumulatedDurationSec + elapsedSec
+    }
+
+    private fun computeDistanceForPath(path: List<LocationModel>): Double {
+        if (path.size < 2) return 0.0
+        var distance = 0.0
+        for (i in 1 until path.size) {
+            distance += calculateDistance(path[i - 1], path[i])
+        }
+        return distance
+    }
+
+    private fun computeAveragePace(distanceMeters: Double, durationSec: Long): String {
+        if (distanceMeters <= 0.0 || durationSec <= 0L) return "0'00''"
+        val paceSeconds = (durationSec / (distanceMeters / 1000.0)).toInt()
+        val minutes = paceSeconds / 60
+        val seconds = paceSeconds % 60
+        return "${minutes}'${seconds.toString().padStart(2, '0')}''"
     }
 }
 

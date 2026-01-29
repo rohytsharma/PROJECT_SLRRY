@@ -17,9 +17,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
@@ -32,6 +36,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.slrry_10.model.RunSession
+import com.example.slrry_10.repository.FirebaseUserRepoImpl
+import com.example.slrry_10.ui.MapViewComponent
+import com.example.slrry_10.viewmodel.StartRunUiState
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class DashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +90,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { QuickOverviewCard() }
-        item { PlaceholderCard("Monthly goal (coming soon)", 80.dp) }
+        item { GoalProgressCard() }
         item { RecentActivityCard() }
         item { SuggestedWorkoutsSection() }
         item { ChallengesSection() }
@@ -89,6 +101,19 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun QuickOverviewCard() {
+    val repo = remember { FirebaseUserRepoImpl() }
+    var weekKm by remember { mutableStateOf(0.0) }
+    var runsCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        val now = System.currentTimeMillis()
+        val weekAgo = now - 7L * 24L * 60L * 60L * 1000L
+        val runs = repo.getRunSessions()
+        val weekRuns = runs.filter { it.startTime >= weekAgo }
+        weekKm = weekRuns.sumOf { it.distance } / 1000.0
+        runsCount = weekRuns.size
+    }
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -112,9 +137,9 @@ fun QuickOverviewCard() {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                OverviewItem("12.4 KM", "This week")
-                OverviewItem("4 Runs", "Total")
-                OverviewItem("600 M²", "Area")
+                OverviewItem(String.format("%.1f KM", weekKm), "This week")
+                OverviewItem("$runsCount Runs", "This week")
+                OverviewItem("—", "Area")
             }
         }
     }
@@ -149,10 +174,83 @@ fun PlaceholderCard(title: String, height: Dp) {
     }
 }
 
+/* ---------------- GOAL PROGRESS ---------------- */
+
+@Composable
+fun GoalProgressCard() {
+    val repo = remember { FirebaseUserRepoImpl() }
+    var weeklyGoalKm by remember { mutableStateOf<Int?>(null) }
+    var weeklyDoneKm by remember { mutableStateOf(0.0) }
+
+    LaunchedEffect(Unit) {
+        weeklyGoalKm = fetchWeeklyGoalKm()
+        val now = System.currentTimeMillis()
+        val weekAgo = now - 7L * 24L * 60L * 60L * 1000L
+        val runs = repo.getRunSessions()
+        weeklyDoneKm = runs.filter { it.startTime >= weekAgo }.sumOf { it.distance } / 1000.0
+    }
+
+    val goal = weeklyGoalKm
+    val fraction = if (goal != null && goal > 0) (weeklyDoneKm / goal.toDouble()).coerceIn(0.0, 1.0) else 0.0
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Weekly goal", fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (goal == null) "Set goal" else "${goal}km",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = if (goal == null) "Complete onboarding to set your goal." else {
+                    "${String.format("%.1f", weeklyDoneKm)} / $goal KM"
+                },
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(fraction.toFloat())
+                        .height(10.dp)
+                        .background(DashAccentGreen, RoundedCornerShape(50))
+                )
+            }
+        }
+    }
+}
+
 /* ---------------- RECENT ACTIVITY ---------------- */
 
 @Composable
 fun RecentActivityCard() {
+    val repo = remember { FirebaseUserRepoImpl() }
+    var latest by remember { mutableStateOf<RunSession?>(null) }
+
+    LaunchedEffect(Unit) {
+        latest = repo.getRunSessions().firstOrNull()
+    }
+
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -160,8 +258,12 @@ fun RecentActivityCard() {
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            Text("Morning run", fontWeight = FontWeight.Bold)
-            Text("Today, 7:30 AM", fontSize = 12.sp, color = Color.Gray)
+            Text("Recent run", fontWeight = FontWeight.Bold)
+            Text(
+                if (latest == null) "Tap Start to record a run" else "Your latest recorded run",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
             Spacer(Modifier.height(8.dp))
 
@@ -169,9 +271,10 @@ fun RecentActivityCard() {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("5 KM")
-                Text("6:38 min/km")
-                Text("30 M")
+                val km = latest?.distance?.div(1000.0) ?: 0.0
+                Text(String.format("%.1f KM", km))
+                Text(latest?.averagePace ?: "—")
+                Text(latest?.duration?.let { "${it / 60} M" } ?: "—")
             }
 
             Spacer(Modifier.height(12.dp))
@@ -183,13 +286,42 @@ fun RecentActivityCard() {
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    "Map (coming soon)",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val session = latest
+                if (session != null && session.path.size >= 2) {
+                    MapViewComponent(
+                        mapView = null,
+                        mapLibreMap = null,
+                        uiState = StartRunUiState(
+                            currentSession = session,
+                            runPath = session.path
+                        ),
+                        onMapReady = { },
+                        showMap = true
+                    )
+                } else {
+                    Text(
+                        "No run recorded yet",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
+    }
+}
+
+private suspend fun fetchWeeklyGoalKm(): Int? {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
+    val ref = FirebaseDatabase.getInstance().reference
+        .child("users")
+        .child(uid)
+        .child("goals")
+        .child("weeklyDistanceKm")
+
+    return suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap -> cont.resume(snap.getValue(Int::class.java)) }
+            .addOnFailureListener { cont.resume(null) }
     }
 }
 
@@ -373,12 +505,11 @@ fun BottomNavigationBar(
                 )
             }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 BottomNavItem(
                     icon = Icons.Filled.DirectionsRun,
                     onClick = {
-                        val ctx = LocalContext.current
-                        ctx.startActivity(Intent(ctx, RecentActivity::class.java))
+                        context.startActivity(Intent(context, RecentActivity::class.java))
                     }
                 )
                 BottomNavItem(

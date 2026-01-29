@@ -80,6 +80,7 @@ fun ReadyToStartScreen(
 ) {
     val context = LocalContext.current
     var isPressing by remember { mutableStateOf(false) }
+    var pendingStart by remember { mutableStateOf(false) }
     val vibrator = remember {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -100,10 +101,32 @@ fun ReadyToStartScreen(
                     @Suppress("DEPRECATION")
                     vibrator.vibrate(200)
                 }
-                viewModel.startTracking()
+                // Don't start the timer until we have a GPS fix (and can center the map).
+                pendingStart = true
                 isPressing = false
             }
         }
+    }
+
+    LaunchedEffect(pendingStart, uiState.currentLocation, mapLibreMap) {
+        if (!pendingStart) return@LaunchedEffect
+        val loc = uiState.currentLocation ?: return@LaunchedEffect
+
+        // Center camera to user first.
+        mapLibreMap?.let { map ->
+            try {
+                val cameraPosition = CameraPosition.Builder()
+                    .target(LatLng(loc.latitude, loc.longitude))
+                    .zoom(16.0)
+                    .build()
+                map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 600)
+            } catch (_: Exception) {
+                // Ignore camera errors
+            }
+        }
+
+        viewModel.startTracking()
+        pendingStart = false
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -1106,15 +1129,24 @@ fun BottomMetricsAndButton(
 
                 OutlinedButton(
                     onClick = { onPauseClick?.invoke() },
-                    modifier = Modifier.size(72.dp),
-                    shape = CircleShape,
+                    modifier = Modifier
+                        .height(56.dp)
+                        .widthIn(min = 120.dp),
+                    shape = RoundedCornerShape(28.dp),
                     border = ButtonDefaults.outlinedButtonBorder.copy(
                         brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFB8FF3A)),
                         width = 3.dp
                     ),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
                 ) {
-                    Text("PAUSE", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(
+                        "PAUSE",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        maxLines = 1
+                    )
                 }
             }
 

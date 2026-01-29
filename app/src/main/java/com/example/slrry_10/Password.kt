@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,7 @@ import com.example.slrry_10.auth.AuthServiceLocator
 import com.example.slrry_10.auth.canProceedFromPassword
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 import com.example.slrry_10.ui.theme.FieldGrey
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
@@ -65,6 +67,7 @@ class PasswordActivity : ComponentActivity() {
                 val authManager = remember { AuthServiceLocator.authManager }
                 var isLoading by remember { mutableStateOf(false) }
                 var errorMessage by remember { mutableStateOf<String?>(null) }
+                var infoMessage by remember { mutableStateOf<String?>(null) }
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SignUpScreen(
                         username = onboardingViewModel.username.value,
@@ -80,6 +83,7 @@ class PasswordActivity : ComponentActivity() {
                             val confirm = onboardingViewModel.confirmPassword.value
 
                             errorMessage = null
+                            infoMessage = null
                             if (email.isBlank()) {
                                 errorMessage = "Please enter your email."
                                 return@SignUpScreen
@@ -93,6 +97,11 @@ class PasswordActivity : ComponentActivity() {
                             authManager.registerWithEmail(email, password) { result ->
                                 result
                                     .onSuccess { user ->
+                                        sendEmailVerification(user) { verifyRes ->
+                                            verifyRes.onSuccess {
+                                                infoMessage = "Verification link sent to $email. Please verify your email."
+                                            }
+                                        }
                                         authManager.ensureUserDoc(user, displayName = null) { _ -> }
                                         onboardingViewModel.currentStep.value = 1
                                         startActivity(Intent(this@PasswordActivity, EnterNameActivity::class.java))
@@ -116,6 +125,20 @@ class PasswordActivity : ComponentActivity() {
                         }
                     )
 
+                    if (infoMessage != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Text(
+                                text = infoMessage!!,
+                                color = androidx.compose.ui.graphics.Color(0xFF2E7D32),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                     if (errorMessage != null) {
                         // Simple overlay message (keeps UI minimal)
                         Box(
@@ -135,6 +158,15 @@ class PasswordActivity : ComponentActivity() {
             }
         }
     }
+}
+
+private fun sendEmailVerification(
+    user: FirebaseUser,
+    onResult: (Result<Unit>) -> Unit
+) {
+    user.sendEmailVerification()
+        .addOnSuccessListener { onResult(Result.success(Unit)) }
+        .addOnFailureListener { e -> onResult(Result.failure(e)) }
 }
 
 @Composable
@@ -244,7 +276,7 @@ private fun LabeledInput(
     onValueChange: (String) -> Unit,
     isPassword: Boolean = false
 ) {
-    var passwordVisible by remember { mutableStateOf(false) }
+    var passwordVisible by rememberSaveable(isPassword) { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = label,
@@ -267,7 +299,8 @@ private fun LabeledInput(
                     val contentDesc = if (passwordVisible) "Hide password" else "Show password"
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
-                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            // Standard UX: show "eye" when hidden (action=show), show "eye-off" when visible (action=hide)
+                            imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                             contentDescription = contentDesc
                         )
                     }

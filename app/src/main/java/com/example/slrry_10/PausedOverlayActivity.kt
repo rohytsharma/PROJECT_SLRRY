@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.slrry_10.repository.LocationRepositoryImpl
-import com.example.slrry_10.repository.UserRepoImpl
+import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.*
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
 import com.example.slrry_10.viewmodel.StartRunViewModel
@@ -70,7 +70,7 @@ fun PausedOverlayScreen(
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
                 return StartRunViewModel(
-                    UserRepoImpl(),
+                    FirebaseUserRepoImpl(),
                     LocationRepositoryImpl()
                 ) as T
             }

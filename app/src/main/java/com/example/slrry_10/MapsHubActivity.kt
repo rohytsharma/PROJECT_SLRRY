@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import com.example.slrry_10.repository.LocationRepositoryImpl
-import com.example.slrry_10.repository.UserRepoImpl
+import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.MapViewComponent
 import com.example.slrry_10.ui.MapsHubScreen
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
@@ -32,7 +32,7 @@ class MapsHubActivity : ComponentActivity() {
                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                             @Suppress("UNCHECKED_CAST")
-                            return StartRunViewModel(UserRepoImpl(), LocationRepositoryImpl()) as T
+                            return StartRunViewModel(FirebaseUserRepoImpl(), LocationRepositoryImpl()) as T
                         }
                     }
                 )
