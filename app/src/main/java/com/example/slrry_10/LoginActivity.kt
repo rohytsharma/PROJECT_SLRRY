@@ -30,7 +30,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.slrry_10.auth.AuthServiceLocator
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthException
 
 private val AccentGreen = Color(0xFFB5FF00)
 private val FieldBg = Color(0xFFF6F6F6)
@@ -38,8 +41,7 @@ private val PageBg = Color.White
 
 private enum class LoginRoute {
     LOGIN,
-    FORGOT_EMAIL,
-    FORGOT_CODE
+    FORGOT_EMAIL
 }
 
 class LoginActivity : ComponentActivity() {
@@ -50,36 +52,81 @@ class LoginActivity : ComponentActivity() {
         setContent {
             SLRRY_10Theme {
                 var route by remember { mutableStateOf(LoginRoute.LOGIN) }
-                var resetEmail by remember { mutableStateOf("") }
+                val authManager = remember { AuthServiceLocator.authManager }
+
+                var email by remember { mutableStateOf("") }
+                var password by remember { mutableStateOf("") }
+                var isLoading by remember { mutableStateOf(false) }
+                var errorMessage by remember { mutableStateOf<String?>(null) }
+                var infoMessage by remember { mutableStateOf<String?>(null) }
 
                 when (route) {
                     LoginRoute.LOGIN -> LoginScreen(
                         onBack = { finish() },
-                        onLogin = {
-                            // For now (until Firebase): login -> dashboard
-                            startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
-                            finish()
+                        email = email,
+                        password = password,
+                        isLoading = isLoading,
+                        errorMessage = errorMessage,
+                        infoMessage = infoMessage,
+                        onEmailChange = { email = it },
+                        onPasswordChange = { password = it },
+                        onLogin = { enteredEmail, enteredPassword ->
+                            val e = enteredEmail.trim()
+                            val p = enteredPassword
+                            if (e.isBlank() || p.isBlank()) {
+                                errorMessage = "Please enter email and password."
+                                return@LoginScreen
+                            }
+
+                            errorMessage = null
+                            infoMessage = null
+                            isLoading = true
+                            authManager.loginWithEmail(e, p) { result ->
+                                result
+                                    .onSuccess { user ->
+                                        authManager.ensureUserDoc(user, displayName = null) { _ -> }
+                                        startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
+                                        finish()
+                                    }
+                                    .onFailure { ex ->
+                                        errorMessage = when (ex) {
+                                            is FirebaseNetworkException ->
+                                                "Network error. Check your internet connection and try again."
+                                            is FirebaseAuthException -> when (ex.errorCode) {
+                                                "ERROR_WRONG_PASSWORD" -> "Wrong password."
+                                                "ERROR_USER_NOT_FOUND" -> "No account found for this email."
+                                                "ERROR_INVALID_EMAIL" -> "Invalid email address."
+                                                else -> ex.message ?: "Login failed."
+                                            }
+                                            else -> ex.message ?: "Login failed."
+                                        }
+                                    }
+                                isLoading = false
+                            }
                         },
                         onForgotPassword = { route = LoginRoute.FORGOT_EMAIL }
                     )
 
                     LoginRoute.FORGOT_EMAIL -> ForgotPasswordEmailScreen(
                         onBack = { route = LoginRoute.LOGIN },
-                        onSubmitEmail = { email ->
-                            resetEmail = email
-                            route = LoginRoute.FORGOT_CODE
-                        }
-                    )
+                        onSubmitEmail = { enteredEmail ->
+                            val e = enteredEmail.trim()
+                            if (e.isBlank()) return@ForgotPasswordEmailScreen
 
-                    LoginRoute.FORGOT_CODE -> ForgotPasswordCodeScreen(
-                        email = resetEmail,
-                        onBack = { route = LoginRoute.FORGOT_EMAIL },
-                        onSubmitCode = {
-                            // Fake success for now: back to login
-                            route = LoginRoute.LOGIN
-                        },
-                        onResendCode = {
-                            // No-op until backend/Firebase
+                            errorMessage = null
+                            infoMessage = null
+                            isLoading = true
+                            authManager.sendPasswordResetEmail(e) { result ->
+                                result
+                                    .onSuccess {
+                                        infoMessage = "Reset link sent to $e."
+                                        route = LoginRoute.LOGIN
+                                    }
+                                    .onFailure { ex ->
+                                        errorMessage = ex.message ?: "Failed to send reset email."
+                                    }
+                                isLoading = false
+                            }
                         }
                     )
                 }
@@ -134,14 +181,14 @@ private fun ForgotPasswordEmailScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Enter your email and we’ll send a verification code.",
+            text = "Enter your email and we’ll send a password reset link.",
             color = Color.Black,
             fontSize = 14.sp
         )
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "You’ll receive a 6-digit code in your inbox.",
+            text = "Check your inbox and follow the link to reset your password.",
             color = Color.Gray,
             fontSize = 12.sp
         )
@@ -332,12 +379,16 @@ private fun ForgotPasswordCodeScreen(
 @Composable
 fun LoginScreen(
     onBack: () -> Unit = {},
-    onLogin: () -> Unit = {},
+    email: String,
+    password: String,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    infoMessage: String? = null,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLogin: (String, String) -> Unit = { _, _ -> },
     onForgotPassword: () -> Unit = {}
 ) {
-
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     Column(
@@ -381,10 +432,11 @@ fun LoginScreen(
 
         // USERNAME FIELD
         OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            placeholder = { Text("Username") },
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+            value = email,
+            onValueChange = onEmailChange,
+            placeholder = { Text("Email") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -402,7 +454,7 @@ fun LoginScreen(
         // PASSWORD FIELD
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = onPasswordChange,
             placeholder = { Text("Password") },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             trailingIcon = {
@@ -431,6 +483,23 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
 
+        if (infoMessage != null) {
+            Text(
+                text = infoMessage,
+                color = Color(0xFF2E7D32),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                color = Color(0xFFD32F2F),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Text(
             text = "Forgot password?",
             modifier = Modifier
@@ -444,7 +513,8 @@ fun LoginScreen(
 
         // LOGIN BUTTON
         Button(
-            onClick = onLogin,
+            onClick = { onLogin(email, password) },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(55.dp),
@@ -454,7 +524,7 @@ fun LoginScreen(
             )
         ) {
             Text(
-                text = "Log In",
+                text = if (isLoading) "Logging in..." else "Log In",
                 color = Color.Black,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -466,5 +536,12 @@ fun LoginScreen(
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {
-    SLRRY_10Theme { LoginScreen() }
+    SLRRY_10Theme {
+        LoginScreen(
+            email = "test@example.com",
+            password = "password",
+            onEmailChange = {},
+            onPasswordChange = {}
+        )
+    }
 }

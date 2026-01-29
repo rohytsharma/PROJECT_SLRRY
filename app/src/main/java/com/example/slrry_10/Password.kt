@@ -46,6 +46,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import com.example.slrry_10.auth.AuthServiceLocator
+import com.example.slrry_10.auth.canProceedFromPassword
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthException
 import com.example.slrry_10.ui.theme.FieldGrey
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
@@ -58,6 +62,9 @@ class PasswordActivity : ComponentActivity() {
         setContent {
             SLRRYTheme {
                 val onboardingViewModel: OnboardingViewModel = viewModel()
+                val authManager = remember { AuthServiceLocator.authManager }
+                var isLoading by remember { mutableStateOf(false) }
+                var errorMessage by remember { mutableStateOf<String?>(null) }
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SignUpScreen(
                         username = onboardingViewModel.username.value,
@@ -66,22 +73,64 @@ class PasswordActivity : ComponentActivity() {
                         onUsernameChange = { onboardingViewModel.username.value = it },
                         onPasswordChange = { onboardingViewModel.password.value = it },
                         onConfirmChange = { onboardingViewModel.confirmPassword.value = it },
+                        isLoading = isLoading,
                         onNext = {
-                            // basic match check; keep logic thin here
-                            if (onboardingViewModel.password.value == onboardingViewModel.confirmPassword.value &&
-                                onboardingViewModel.password.value.isNotBlank()
-                            ) {
-                                // First step completed, move to name entry (step 1 of progress flow)
-                                onboardingViewModel.currentStep.value = 1
-                                startActivity(
-                                    Intent(
-                                        this@PasswordActivity,
-                                        EnterNameActivity::class.java
-                                    )
-                                )
+                            val email = onboardingViewModel.username.value.trim()
+                            val password = onboardingViewModel.password.value
+                            val confirm = onboardingViewModel.confirmPassword.value
+
+                            errorMessage = null
+                            if (email.isBlank()) {
+                                errorMessage = "Please enter your email."
+                                return@SignUpScreen
+                            }
+                            if (!canProceedFromPassword(password, confirm)) {
+                                errorMessage = "Passwords do not match or are blank."
+                                return@SignUpScreen
+                            }
+
+                            isLoading = true
+                            authManager.registerWithEmail(email, password) { result ->
+                                result
+                                    .onSuccess { user ->
+                                        authManager.ensureUserDoc(user, displayName = null) { _ -> }
+                                        onboardingViewModel.currentStep.value = 1
+                                        startActivity(Intent(this@PasswordActivity, EnterNameActivity::class.java))
+                                    }
+                                    .onFailure { e ->
+                                        errorMessage = when (e) {
+                                            is FirebaseNetworkException ->
+                                                "Network error during Firebase verification (reCAPTCHA). " +
+                                                    "If you're on an emulator, try a physical device OR add your app SHA-1 in Firebase and re-download google-services.json."
+                                            is FirebaseAuthException -> when (e.errorCode) {
+                                                "ERROR_EMAIL_ALREADY_IN_USE" -> "This email is already registered. Please log in."
+                                                "ERROR_INVALID_EMAIL" -> "Invalid email address."
+                                                "ERROR_WEAK_PASSWORD" -> "Password is too weak (min 6 characters)."
+                                                else -> e.message ?: "Registration failed."
+                                            }
+                                            else -> e.message ?: "Registration failed."
+                                        }
+                                    }
+                                isLoading = false
                             }
                         }
                     )
+
+                    if (errorMessage != null) {
+                        // Simple overlay message (keeps UI minimal)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Text(
+                                text = errorMessage!!,
+                                color = androidx.compose.ui.graphics.Color(0xFFB00020),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -96,6 +145,7 @@ fun SignUpScreen(
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmChange: (String) -> Unit,
+    isLoading: Boolean = false,
     onNext: () -> Unit
 ) {
 
@@ -109,7 +159,7 @@ fun SignUpScreen(
         Logo()
         Spacer(modifier = Modifier.height(32.dp))
         LabeledInput(
-            label = "USERNAME",
+            label = "EMAIL",
             value = username,
             onValueChange = onUsernameChange
         )
@@ -137,9 +187,10 @@ fun SignUpScreen(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Mint,
                 contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+            ),
+            enabled = !isLoading
         ) {
-            Text(text = "Next", fontSize = 16.sp)
+            Text(text = if (isLoading) "Please wait..." else "Next", fontSize = 16.sp)
         }
     }
 }
