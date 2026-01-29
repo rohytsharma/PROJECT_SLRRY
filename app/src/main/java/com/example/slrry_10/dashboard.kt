@@ -159,7 +159,7 @@ fun RecentActivityCard() {
             Text(
                 "Today, 7:30 AM",
                 fontSize = 12.sp,
-                color = Color(0xFF7E868C)
+                color = Color(0xFF94A3B8)
             )
 
             Spacer(Modifier.height(8.dp))
