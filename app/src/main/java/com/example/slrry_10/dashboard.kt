@@ -135,7 +135,12 @@ fun PlaceholderCard(title: String, height: Dp) {
                 .background(Color(0xFFEDEDED)),
             contentAlignment = Alignment.Center
         ) {
-            Text(title, color = Color.Gray)
+            Text(
+                title,
+                color = Color(0xFF94A3B8),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
