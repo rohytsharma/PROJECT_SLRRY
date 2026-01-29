@@ -132,7 +132,7 @@ fun LeaderBoardScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(others) { friend ->
+                    items(items = others, key = { it.rank }) { friend ->
                         FriendRow(friend)
                     }
                 }
