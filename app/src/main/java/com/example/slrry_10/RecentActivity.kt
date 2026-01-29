@@ -172,8 +172,11 @@ private fun StatItem(value: String, label: String) {
 
 @Composable
 private fun ActivityCard(activity: RunActivity) {
+    val ctx = LocalContext.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { ctx.startActivity(Intent(ctx, RunningActivity::class.java)) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFFFFFFFF) // use white for better contrast
