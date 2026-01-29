@@ -37,16 +37,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.slrry_10.repository.UserProfileStore
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
 import com.example.slrry_10.ui.theme.SLRRYTheme
+import kotlinx.coroutines.launch
 
 class SpecificEventActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +71,15 @@ class SpecificEventActivity : ComponentActivity() {
                             finish()
                         },
                         onNext = {
+                            val event = onboardingViewModel.specificEvent.value ?: "5K race"
+                            lifecycleScope.launch {
+                                UserProfileStore.updateCurrentUserFields(
+                                    mapOf(
+                                        "goals/specificEvent" to event,
+                                        "updatedAt" to System.currentTimeMillis()
+                                    )
+                                )
+                            }
                             startActivity(
                                 Intent(
                                     this@SpecificEventActivity,

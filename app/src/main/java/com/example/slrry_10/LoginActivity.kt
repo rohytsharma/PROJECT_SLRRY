@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +35,7 @@ import com.example.slrry_10.auth.AuthServiceLocator
 import com.example.slrry_10.ui.theme.SLRRY_10Theme
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 
 private val AccentGreen = Color(0xFFB5FF00)
 private val FieldBg = Color(0xFFF6F6F6)
@@ -59,6 +61,7 @@ class LoginActivity : ComponentActivity() {
                 var isLoading by remember { mutableStateOf(false) }
                 var errorMessage by remember { mutableStateOf<String?>(null) }
                 var infoMessage by remember { mutableStateOf<String?>(null) }
+                var unverifiedUser by remember { mutableStateOf<FirebaseUser?>(null) }
 
                 when (route) {
                     LoginRoute.LOGIN -> LoginScreen(
@@ -80,10 +83,17 @@ class LoginActivity : ComponentActivity() {
 
                             errorMessage = null
                             infoMessage = null
+                            unverifiedUser = null
                             isLoading = true
                             authManager.loginWithEmail(e, p) { result ->
                                 result
                                     .onSuccess { user ->
+                                        if (!user.isEmailVerified) {
+                                            unverifiedUser = user
+                                            errorMessage = "Please verify your email first. We sent a verification link to $e."
+                                            isLoading = false
+                                            return@loginWithEmail
+                                        }
                                         authManager.ensureUserDoc(user, displayName = null) { _ -> }
                                         startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
                                         finish()
@@ -104,7 +114,19 @@ class LoginActivity : ComponentActivity() {
                                 isLoading = false
                             }
                         },
-                        onForgotPassword = { route = LoginRoute.FORGOT_EMAIL }
+                        onForgotPassword = { route = LoginRoute.FORGOT_EMAIL },
+                        onResendVerification = unverifiedUser?.let { u ->
+                            {
+                                errorMessage = null
+                                infoMessage = null
+                                isLoading = true
+                                sendEmailVerification(u) { r ->
+                                    r.onSuccess { infoMessage = "Verification link sent. Please check your email." }
+                                        .onFailure { e2 -> errorMessage = e2.message ?: "Failed to send verification email." }
+                                    isLoading = false
+                                }
+                            }
+                        }
                     )
 
                     LoginRoute.FORGOT_EMAIL -> ForgotPasswordEmailScreen(
@@ -387,9 +409,10 @@ fun LoginScreen(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLogin: (String, String) -> Unit = { _, _ -> },
-    onForgotPassword: () -> Unit = {}
+    onForgotPassword: () -> Unit = {},
+    onResendVerification: (() -> Unit)? = null
 ) {
-    var passwordVisible by remember { mutableStateOf(false) }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -460,8 +483,8 @@ fun LoginScreen(
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
-                        imageVector = if (passwordVisible) Icons.Default.Visibility
-                        else Icons.Default.VisibilityOff,
+                        // Standard UX: show "eye" when hidden (action=show), show "eye-off" when visible (action=hide)
+                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         contentDescription = "Toggle password visibility"
                     )
                 }
@@ -495,6 +518,18 @@ fun LoginScreen(
             Text(
                 text = errorMessage,
                 color = Color(0xFFD32F2F),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (onResendVerification != null) {
+            Text(
+                text = "Resend verification email",
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clickable { onResendVerification() },
+                color = Color.Black,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -544,4 +579,13 @@ fun LoginScreenPreview() {
             onPasswordChange = {}
         )
     }
+}
+
+private fun sendEmailVerification(
+    user: FirebaseUser,
+    onResult: (Result<Unit>) -> Unit
+) {
+    user.sendEmailVerification()
+        .addOnSuccessListener { onResult(Result.success(Unit)) }
+        .addOnFailureListener { e -> onResult(Result.failure(e)) }
 }

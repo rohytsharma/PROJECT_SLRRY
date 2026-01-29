@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlin.math.cos
 
 enum class MapsTab { WORLD, PERSONAL, FRIENDS }
@@ -55,6 +57,10 @@ class StartRunViewModel(
     
     private val _uiState = MutableStateFlow(StartRunUiState())
     val uiState: StateFlow<StartRunUiState> = _uiState.asStateFlow()
+
+    private var timerJob: Job? = null
+    private var timerBaseMs: Long = 0L
+    private var accumulatedDurationSec: Long = 0L
     
     fun updateLocation(location: LocationModel) {
         // Use viewModelScope to ensure updates happen on correct thread
@@ -81,9 +87,15 @@ class StartRunViewModel(
     }
     
     fun startTracking() {
+        val now = System.currentTimeMillis()
+        // Reset timer accounting for a fresh run.
+        timerJob?.cancel()
+        accumulatedDurationSec = 0L
+        timerBaseMs = now
+
         val session = RunSession(
             id = System.currentTimeMillis().toString(),
-            startTime = System.currentTimeMillis(),
+            startTime = now,
             isActive = true
         )
         _uiState.value = _uiState.value.copy(
@@ -93,18 +105,28 @@ class StartRunViewModel(
             runPath = emptyList(),
             screenState = RunScreenState.RUNNING
         )
+
+        startTimer()
     }
     
     fun pauseTracking() {
+        val now = System.currentTimeMillis()
+        accumulatedDurationSec = computeDurationNow(now)
+        timerJob?.cancel()
+        timerJob = null
         _uiState.value = _uiState.value.copy(
             isTracking = false,
             isPaused = true,
+            currentSession = _uiState.value.currentSession?.copy(duration = accumulatedDurationSec),
             screenState = RunScreenState.PAUSED_WITH_OVERLAY,
             showMapInPaused = false
         )
     }
     
     fun resumeTracking() {
+        val now = System.currentTimeMillis()
+        timerBaseMs = now
+        startTimer()
         _uiState.value = _uiState.value.copy(
             isTracking = true,
             isPaused = false,
@@ -128,9 +150,21 @@ class StartRunViewModel(
     
     fun finishRun() {
         val currentState = _uiState.value
+        val now = System.currentTimeMillis()
+        val duration = computeDurationNow(now)
+        val distance = computeDistanceForPath(currentState.runPath)
+        val pace = computeAveragePace(distance, duration)
+
+        timerJob?.cancel()
+        timerJob = null
+        accumulatedDurationSec = duration
+
         val session = currentState.currentSession?.copy(
-            endTime = System.currentTimeMillis(),
+            endTime = now,
             path = currentState.runPath,
+            distance = distance,
+            duration = duration,
+            averagePace = pace,
             isActive = false
         )
         
@@ -168,9 +202,21 @@ class StartRunViewModel(
     
     fun stopTracking() {
         val currentState = _uiState.value
+        val now = System.currentTimeMillis()
+        val duration = computeDurationNow(now)
+        val distance = computeDistanceForPath(currentState.runPath)
+        val pace = computeAveragePace(distance, duration)
+
+        timerJob?.cancel()
+        timerJob = null
+        accumulatedDurationSec = duration
+
         val session = currentState.currentSession?.copy(
-            endTime = System.currentTimeMillis(),
+            endTime = now,
             path = currentState.runPath,
+            distance = distance,
+            duration = duration,
+            averagePace = pace,
             isActive = false
         )
         
@@ -203,20 +249,9 @@ class StartRunViewModel(
                 distance += calculateDistance(path[i - 1], path[i])
             }
             
-            // Calculate duration
-            val duration = if (session.startTime > 0) {
-                (System.currentTimeMillis() - session.startTime) / 1000
-            } else 0L
-            
-            // Calculate average pace
-            val pace = if (distance > 0 && duration > 0) {
-                val paceSeconds = (duration / (distance / 1000)).toInt()
-                val minutes = paceSeconds / 60
-                val seconds = paceSeconds % 60
-                "${minutes}'${seconds.toString().padStart(2, '0')}''"
-            } else {
-                "0'00''"
-            }
+            // Duration comes from the run timer (so paused time isn't counted).
+            val duration = currentState.currentSession?.duration ?: 0L
+            val pace = computeAveragePace(distance, duration)
             
             val updatedSession = session.copy(
                 path = path,
@@ -408,6 +443,50 @@ class StartRunViewModel(
         }
 
         return state.copy(worldOwners = world, friendsOwners = friends)
+    }
+
+    private fun startTimer() {
+        // Only one timer at a time.
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                val state = _uiState.value
+                if (!state.isTracking) continue
+                val now = System.currentTimeMillis()
+                val duration = computeDurationNow(now)
+                val session = state.currentSession ?: continue
+                val pace = computeAveragePace(session.distance, duration)
+                _uiState.value = state.copy(
+                    currentSession = session.copy(
+                        duration = duration,
+                        averagePace = pace
+                    )
+                )
+            }
+        }
+    }
+
+    private fun computeDurationNow(nowMs: Long): Long {
+        val elapsedSec = ((nowMs - timerBaseMs).coerceAtLeast(0L)) / 1000L
+        return accumulatedDurationSec + elapsedSec
+    }
+
+    private fun computeDistanceForPath(path: List<LocationModel>): Double {
+        if (path.size < 2) return 0.0
+        var distance = 0.0
+        for (i in 1 until path.size) {
+            distance += calculateDistance(path[i - 1], path[i])
+        }
+        return distance
+    }
+
+    private fun computeAveragePace(distanceMeters: Double, durationSec: Long): String {
+        if (distanceMeters <= 0.0 || durationSec <= 0L) return "0'00''"
+        val paceSeconds = (durationSec / (distanceMeters / 1000.0)).toInt()
+        val minutes = paceSeconds / 60
+        val seconds = paceSeconds % 60
+        return "${minutes}'${seconds.toString().padStart(2, '0')}''"
     }
 }
 

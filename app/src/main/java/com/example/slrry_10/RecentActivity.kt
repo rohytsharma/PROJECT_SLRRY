@@ -1,10 +1,12 @@
 package com.example.slrry_10
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,16 +32,27 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
 import com.example.slrry_10.ui.theme.SLRRYTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.coroutines.resume
 
 data class RunActivity(
     val id: String,
@@ -67,20 +80,42 @@ class RecentActivity : ComponentActivity() {
 
 @Composable
 fun RecentActivitiesScreen() {
-    // Sample data - in real app, this would come from ViewModel/Repository
-    val activities = remember {
-        listOf(
-            RunActivity("1", "Monday Morning Run", "16/7/2024", "0 Km", "0", "0\"", 0.6f),
-            RunActivity("2", "Sunday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.95f),
-            RunActivity("3", "Saturday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.9f),
-            RunActivity("4", "Friday Morning Run", "15/7/2024", "0 Km", "0", "0\"", 0.75f)
-        )
+    val ctx = LocalContext.current
+    val repo = remember { FirebaseUserRepoImpl() }
+    var activities by remember { mutableStateOf<List<RunActivity>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        val sessions = repo.getRunSessions()
+        val weeklyGoalKm = fetchWeeklyGoalKm() ?: 0
+        val fmt = SimpleDateFormat("d/M/yyyy", Locale.getDefault())
+
+        activities = sessions.map { s ->
+            val km = s.distance / 1000.0
+            val minutes = (s.duration / 60).toInt()
+            val seconds = (s.duration % 60).toInt()
+            val timeText = String.format(Locale.getDefault(), "%d.%02d", minutes, seconds)
+            val dateText = fmt.format(Date(s.startTime))
+            val progress = if (weeklyGoalKm > 0) (km / weeklyGoalKm.toDouble()).toFloat().coerceIn(0f, 1f) else 0f
+
+            RunActivity(
+                id = s.id,
+                name = "Run",
+                date = dateText,
+                distance = String.format(Locale.getDefault(), "%.2f Km", km).replace(".", ","),
+                time = timeText,
+                pace = s.averagePace,
+                progress = progress
+            )
+        }
     }
-    
-    val totalDistance = "0"
-    val totalRuns = "0"
-    val averagePace = "0"
-    val totalTime = "0"
+
+    val totalKm = activities.sumOf { a ->
+        a.distance.replace("Km", "", ignoreCase = true).replace(",", ".").trim().toDoubleOrNull() ?: 0.0
+    }
+    val totalDistance = String.format(Locale.getDefault(), "%.2f", totalKm).replace(".", ",")
+    val totalRuns = activities.size.toString()
+    val averagePace = activities.firstOrNull()?.pace ?: "—"
+    val totalTime = "—"
 
     Column(
         modifier = Modifier
@@ -93,7 +128,9 @@ fun RecentActivitiesScreen() {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /* TODO: navigate back */ }) {
+            IconButton(onClick = {
+                if (ctx is ComponentActivity) ctx.finish()
+            }) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
@@ -149,8 +186,23 @@ fun RecentActivitiesScreen() {
                 ActivityCard(activity = activity)
             }
         }
-        }
     }
+}
+
+private suspend fun fetchWeeklyGoalKm(): Int? {
+    val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return null
+    val ref = com.google.firebase.database.FirebaseDatabase.getInstance().reference
+        .child("users")
+        .child(uid)
+        .child("goals")
+        .child("weeklyDistanceKm")
+
+    return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap -> cont.resume(snap.getValue(Int::class.java)) }
+            .addOnFailureListener { cont.resume(null) }
+    }
+}
 
 @Composable
 private fun StatItem(value: String, label: String) {

@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -68,15 +69,16 @@ class LeaderBoardActivity : ComponentActivity() {
 fun LeaderBoardScreen() {
     val top3 = remember {
         listOf(
-        FriendRank(rank = 2, name = "Lokeece", points = 0, rankChange = 0),
-        FriendRank(rank = 1, name = "Richu", points = 0, rankChange = 0),
-        FriendRank(rank = 3, name = "Rohit", points = 0, rankChange = 0),
-    )
+            FriendRank(rank = 2, name = "Lokeece", points = 0, rankChange = 0),
+            FriendRank(rank = 1, name = "Richu", points = 0, rankChange = 0),
+            FriendRank(rank = 3, name = "Rohit", points = 0, rankChange = 0)
+        )
+    }
     val others = remember {
         listOf(
             FriendRank(4, "Yuva", 0, 0),
             FriendRank(5, "Sameer", 0, 0),
-            FriendRank(6, "yuvati", 0, 0),
+            FriendRank(6, "yuvati", 0, 0)
         )
     }
 

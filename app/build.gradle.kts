@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.firebase.database)
+    implementation(libs.androidx.compose.foundation)
 
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:5.11.0")

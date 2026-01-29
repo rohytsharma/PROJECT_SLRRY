@@ -1,14 +1,12 @@
 package com.example.slrry_10.auth
 
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
+import com.google.firebase.database.FirebaseDatabase
 
 class FirebaseAuthManager(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val db: FirebaseDatabase = FirebaseDatabase.getInstance()
 ) : AuthManager {
 
     override fun registerWithEmail(
@@ -51,26 +49,19 @@ class FirebaseAuthManager(
         onResult: (Result<Unit>) -> Unit
     ) {
         val uid = user.uid
-        val doc = db.collection("users").document(uid)
-
-        val data = mutableMapOf<String, Any?>(
+        val usersRef = db.reference.child("users").child(uid)
+        val data = mapOf(
             "uid" to uid,
-            "email" to user.email,
-            "displayName" to (displayName ?: user.displayName),
-            "photoUrl" to user.photoUrl?.toString(),
-            "updatedAt" to Timestamp.now()
+            "email" to (user.email ?: ""),
+            "displayName" to (displayName ?: user.displayName ?: ""),
+            "photoUrl" to (user.photoUrl?.toString() ?: ""),
+            "emailVerified" to user.isEmailVerified,
+            "updatedAt" to System.currentTimeMillis()
         )
 
-        // Only set createdAt if the document doesn't exist yet.
-        doc.get()
-            .addOnSuccessListener { snap ->
-                if (!snap.exists()) {
-                    data["createdAt"] = Timestamp.now()
-                }
-                doc.set(data, SetOptions.merge())
-                    .addOnSuccessListener { onResult(Result.success(Unit)) }
-                    .addOnFailureListener { e -> onResult(Result.failure(e)) }
-            }
+        // Merge by updating children; this creates the node if missing.
+        usersRef.updateChildren(data)
+            .addOnSuccessListener { onResult(Result.success(Unit)) }
             .addOnFailureListener { e -> onResult(Result.failure(e)) }
     }
 }

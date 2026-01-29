@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,7 +45,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.slrry_10.repository.UserProfileStore
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
 import com.example.slrry_10.ui.theme.SLRRYTheme
@@ -67,6 +70,15 @@ class HeightActivity : ComponentActivity() {
                             finish()
                         },
                         onNext = {
+                            val heightCm = onboardingViewModel.heightCm.value ?: 180
+                            lifecycleScope.launch {
+                                UserProfileStore.updateCurrentUserFields(
+                                    mapOf(
+                                        "heightCm" to heightCm,
+                                        "updatedAt" to System.currentTimeMillis()
+                                    )
+                                )
+                            }
                             onboardingViewModel.currentStep.value = 4
                             startActivity(
                                 Intent(

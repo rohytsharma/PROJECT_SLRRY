@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -36,10 +37,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.slrry_10.repository.UserProfileStore
 import com.example.slrry_10.ui.theme.SLRRYTheme
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.NeonAccent
+import kotlinx.coroutines.launch
 
 class EnterNameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,6 +59,16 @@ class EnterNameActivity : ComponentActivity() {
                         totalSteps = onboardingViewModel.totalSteps,
                         onNameChange = { onboardingViewModel.fullName.value = it },
                         onNext = {
+                            val name = onboardingViewModel.fullName.value
+                            lifecycleScope.launch {
+                                UserProfileStore.updateCurrentUserFields(
+                                    mapOf(
+                                        "name" to name,
+                                        "displayName" to name,
+                                        "updatedAt" to System.currentTimeMillis()
+                                    )
+                                )
+                            }
                             // Advance to the next logical step and navigate to the gender screen.
                             onboardingViewModel.currentStep.value = 2
                             startActivity(
@@ -79,6 +93,7 @@ fun EnterNameScreen(
     onNameChange: (String) -> Unit,
     onNext: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
@@ -108,8 +123,8 @@ fun EnterNameScreen(
                 imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Text
             ),
-            keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
-                onDone = { LocalFocusManager.current.clearFocus() }
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
             ),
             textStyle = TextStyle(fontSize = 16.sp),
             shape = RoundedCornerShape(6.dp),
