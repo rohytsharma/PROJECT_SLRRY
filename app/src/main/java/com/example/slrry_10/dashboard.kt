@@ -173,9 +173,9 @@ fun RecentActivityCard() {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("5 KM")
-                Text("33:11 / KM")
-                Text("30 M")
+                Text("5 KM", fontWeight = FontWeight.SemiBold, color = Color(0xFF111416))
+                Text("33:11 / KM", fontSize = 12.sp, color = Color(0xFF64748B))
+                Text("30 M", fontWeight = FontWeight.Medium, color = Color(0xFF111416))
             }
 
             Spacer(Modifier.height(12.dp))
