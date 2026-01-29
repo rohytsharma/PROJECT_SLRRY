@@ -66,16 +66,19 @@ class LeaderBoardActivity : ComponentActivity() {
 
 @Composable
 fun LeaderBoardScreen() {
-    val top3 = listOf(
+    val top3 = remember {
+        listOf(
         FriendRank(rank = 2, name = "Lokeece", points = 0, rankChange = 0),
         FriendRank(rank = 1, name = "Richu", points = 0, rankChange = 0),
         FriendRank(rank = 3, name = "Rohit", points = 0, rankChange = 0),
     )
-    val others = listOf(
-        FriendRank(4, "Yuva", 0, 0),
-        FriendRank(5, "Sameer", 0, 0),
-        FriendRank(6, "yuvati", 0, 0),
-    )
+    val others = remember {
+        listOf(
+            FriendRank(4, "Yuva", 0, 0),
+            FriendRank(5, "Sameer", 0, 0),
+            FriendRank(6, "yuvati", 0, 0),
+        )
+    }
 
     val gradient = Brush.verticalGradient(
         colors = listOf(
