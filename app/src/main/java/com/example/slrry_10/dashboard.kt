@@ -389,6 +389,7 @@ fun BottomNavigationBar() {
             Text(
                 "START",
                 fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
                 modifier = Modifier.clickable {
                     context.startActivity(Intent(context, StartRunActivity::class.java))
                 }
