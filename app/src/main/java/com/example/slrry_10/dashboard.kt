@@ -184,10 +184,14 @@ fun RecentActivityCard() {
                 Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .background(Color(0xFFEDEDED), RoundedCornerShape(12.dp)),
+                    .background(Color(0xFFE2E8F0), RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Map (coming soon)", fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    "Map (coming soon)",
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B)
+                )
             }
         }
     }
