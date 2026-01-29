@@ -144,8 +144,11 @@ fun PlaceholderCard(title: String, height: Dp) {
 
 @Composable
 fun RecentActivityCard() {
-    Card(shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
 
             Text("Morning run", fontWeight = FontWeight.Bold)
             Text("Today, 7:30 AM", fontSize = 12.sp, color = Color.Gray)
