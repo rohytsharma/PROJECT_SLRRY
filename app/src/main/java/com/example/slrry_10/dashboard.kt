@@ -66,8 +66,11 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun QuickOverviewCard() {
-    Card(shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp)) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
 
             Row(
                 Modifier.fillMaxWidth(),
