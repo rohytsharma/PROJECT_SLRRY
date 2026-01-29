@@ -51,7 +51,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF9FAFB)),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 20.dp,
+            bottom = 120.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { QuickOverviewCard() }
