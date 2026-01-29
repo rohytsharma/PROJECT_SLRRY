@@ -50,8 +50,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F6F2)),
-        contentPadding = PaddingValues(16.dp, bottom = 120.dp),
+            .background(Color(0xFFF9FAFB)),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { QuickOverviewCard() }
