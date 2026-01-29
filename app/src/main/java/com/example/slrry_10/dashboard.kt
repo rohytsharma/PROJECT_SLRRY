@@ -150,8 +150,17 @@ fun RecentActivityCard() {
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
 
-            Text("Morning run", fontWeight = FontWeight.Bold)
-            Text("Today, 7:30 AM", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                "Morning run",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                color = Color(0xFF111416)
+            )
+            Text(
+                "Today, 7:30 AM",
+                fontSize = 12.sp,
+                color = Color(0xFF7E868C)
+            )
 
             Spacer(Modifier.height(8.dp))
 
