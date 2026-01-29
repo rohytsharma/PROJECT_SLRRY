@@ -73,8 +73,17 @@ fun QuickOverviewCard() {
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Quick overview", fontWeight = FontWeight.SemiBold)
-                Text("This week", color = Color.Gray)
+            Text(
+                "Quick overview",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF111416)
+            )
+            Text(
+                "This week",
+                fontSize = 12.sp,
+                color = Color(0xFF7E868C)
+            )
             }
 
             Spacer(Modifier.height(16.dp))
