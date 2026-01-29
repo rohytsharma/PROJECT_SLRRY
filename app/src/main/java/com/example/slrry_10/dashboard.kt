@@ -207,16 +207,24 @@ fun SuggestedWorkoutsSection() {
             Text(
                 "See all",
                 fontSize = 12.sp,
-                color = Color(0xFF7E868C)
+                color = Color(0xFF94A3B8)
             )
         }
 
         Spacer(Modifier.height(8.dp))
 
-        Card(shape = RoundedCornerShape(16.dp)) {
-            Column(Modifier.padding(16.dp)) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
 
-                Text("First Half Marathon", fontWeight = FontWeight.Bold)
+                Text(
+                    "First Half Marathon",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF111416)
+                )
                 Text(
                     "21.1 km workout designed to build endurance",
                     fontSize = 12.sp,
