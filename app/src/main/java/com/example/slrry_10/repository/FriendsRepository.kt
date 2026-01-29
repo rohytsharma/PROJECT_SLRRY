@@ -82,9 +82,9 @@ class FriendsRepository(
      */
     suspend fun listAllUsers(limit: Int = 50): List<UserSummary> {
         val uid = currentUid()
-        val ref = db.reference.child("users")
+        // IMPORTANT: don't rely on displayNameLower being present; just read the first page.
         val snap = suspendCancellableCoroutine<DataSnapshot?> { cont ->
-            ref.orderByChild("displayNameLower")
+            db.reference.child("users")
                 .limitToFirst(limit)
                 .get()
                 .addOnSuccessListener { cont.resume(it) }

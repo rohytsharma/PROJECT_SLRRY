@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,13 +15,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,15 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.slrry_10.model.RunSession
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.repository.FriendsRepository
@@ -290,85 +286,97 @@ private fun AddFriendDialog(
     onDismiss: () -> Unit,
     onFriendAdded: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         // "Show all users" when opening the dialog (paged).
-        isSearching = true
+        isLoading = true
         results = friendsRepo.listAllUsers(limit = 50)
-        isSearching = false
+        isLoading = false
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add friend") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = {
-                        query = it
-                        isSearching = true
-                        scope.launch {
-                            results = if (it.trim().isBlank()) {
-                                friendsRepo.listAllUsers(limit = 50)
-                            } else {
-                                friendsRepo.searchUsersByNamePrefix(it)
-                            }
-                            isSearching = false
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    placeholder = { Text("Search by name") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors()
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (isSearching) {
-                    Text("Searching…", fontSize = 12.sp, color = Color.Gray)
-                } else if (!isSearching && results.isEmpty()) {
-                    Text("No users found.", fontSize = 12.sp, color = Color.Gray)
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Add friend", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+                    ) { Text("Done") }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-                results.take(10).forEach { u ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (isLoading) {
+                    Text("Loading users…", fontSize = 12.sp, color = Color.Gray)
+                } else if (results.isEmpty()) {
+                    Text(
+                        "No user profiles found in Realtime Database yet.\n" +
+                            "This list shows `/users` nodes (not Firebase Auth users). " +
+                            "Log in once with the other accounts so their `/users/{uid}` gets created.",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 6.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(u.displayName, fontWeight = FontWeight.SemiBold)
-                            if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
-                        }
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    friendsRepo.sendFriendRequest(u.uid)
-                                    onFriendAdded()
+                        items(items = results, key = { it.uid }) { u ->
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(u.displayName, fontWeight = FontWeight.SemiBold)
+                                        if (u.email.isNotBlank()) {
+                                            Text(u.email, fontSize = 12.sp, color = Color.Gray)
+                                        }
+                                    }
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                friendsRepo.sendFriendRequest(u.uid)
+                                                onFriendAdded()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Mint,
+                                            contentColor = Color.White
+                                        )
+                                    ) {
+                                        Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
-                        ) {
-                            Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
-            ) { Text("Done") }
         }
-    )
+    }
 }
 
 @Composable
@@ -551,7 +559,7 @@ private fun StreaksCard(days: List<StreakDay>) {
                 columns = GridCells.Fixed(7),
                 modifier = Modifier.height(140.dp)
             ) {
-                items(days) { day ->
+                gridItems(days) { day ->
                     Box(
                         modifier = Modifier
                             .padding(6.dp)
