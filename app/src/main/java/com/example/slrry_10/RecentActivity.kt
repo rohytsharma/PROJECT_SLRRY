@@ -176,9 +176,9 @@ private fun ActivityCard(activity: RunActivity) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF0F8F0) // Light green tint
+            containerColor = Color(0xFFFFFFFF) // use white for better contrast
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
