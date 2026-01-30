@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.ui.theme.Mint
 import com.example.slrry_10.ui.theme.SLRRYTheme
+import com.google.firebase.auth.FirebaseAuth
 import kotlin.random.Random
 
 class CompletionActivity : ComponentActivity() {
@@ -49,8 +50,10 @@ class CompletionActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompletionScreen(
                         onDone = {
-                            // Navigate to StartScreen and clear the back stack (no going back to onboarding)
-                            val intent = Intent(this@CompletionActivity, StartScreenActivity::class.java)
+                            // Registration is complete -> go to Login and clear onboarding from back stack.
+                            // We sign out so login behaves as expected (and email verification gating works).
+                            FirebaseAuth.getInstance().signOut()
+                            val intent = Intent(this@CompletionActivity, LoginActivity::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             startActivity(intent)
                             finish()
