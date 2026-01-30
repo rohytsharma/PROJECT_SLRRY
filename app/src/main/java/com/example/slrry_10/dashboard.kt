@@ -44,6 +44,8 @@ import com.example.slrry_10.repository.TerritoryRepository
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.MapViewComponent
 import com.example.slrry_10.viewmodel.StartRunUiState
+import com.example.slrry_10.EXTRA_INTRO_MESSAGE
+import com.example.slrry_10.EXTRA_INTRO_TITLE
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -407,7 +409,12 @@ fun SuggestedWorkoutsSection() {
                 Spacer(Modifier.height(12.dp))
 
                 Button(
-                    onClick = {},
+                    onClick = {
+                        val i = Intent(context, StartRunActivity::class.java)
+                            .putExtra(EXTRA_INTRO_TITLE, "Let’s begin a 21k")
+                            .putExtra(EXTRA_INTRO_MESSAGE, "You can do it — let’s do your 21.1k!")
+                        context.startActivity(i)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DashAccentGreen
@@ -462,6 +469,7 @@ fun ChallengesSection() {
 
 @Composable
 fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -478,7 +486,21 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 
             DashboardPrimaryButton(
                 text = "Start now",
-                onClick = {},
+                onClick = {
+                    val (popupTitle, popupMessage) = when {
+                        title.contains("50", ignoreCase = true) ->
+                            "Let’s do your 5k" to "Let’s do your 5k — you got this!"
+                        title.contains("every day", ignoreCase = true) ->
+                            "Let’s begin" to "Consistency wins — let’s start today’s run!"
+                        else ->
+                            "Let’s begin" to "Let’s start your run!"
+                    }
+
+                    val i = Intent(context, StartRunActivity::class.java)
+                        .putExtra(EXTRA_INTRO_TITLE, popupTitle)
+                        .putExtra(EXTRA_INTRO_MESSAGE, popupMessage)
+                    context.startActivity(i)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }

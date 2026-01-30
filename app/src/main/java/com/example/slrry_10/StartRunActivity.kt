@@ -42,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.slrry_10.model.LocationModel
 import com.example.slrry_10.model.RunScreenState
 import com.example.slrry_10.repository.LocationRepositoryImpl
@@ -109,7 +110,9 @@ class StartRunActivity : ComponentActivity() {
                         fusedLocationClient = fusedLocationClient,
                         locationRequest = locationRequest,
                         hasLocationPermission = hasLocationPermission,
-                        onPermissionGranted = { hasLocationPermission = true }
+                        onPermissionGranted = { hasLocationPermission = true },
+                        introTitle = intent.getStringExtra(EXTRA_INTRO_TITLE),
+                        introMessage = intent.getStringExtra(EXTRA_INTRO_MESSAGE)
                     )
                 }
             }
@@ -179,12 +182,17 @@ class StartRunActivity : ComponentActivity() {
     }
 }
 
+const val EXTRA_INTRO_TITLE = "slrry_intro_title"
+const val EXTRA_INTRO_MESSAGE = "slrry_intro_message"
+
 @Composable
 fun StartRunScreen(
     fusedLocationClient: FusedLocationProviderClient,
     locationRequest: LocationRequest,
     hasLocationPermission: Boolean,
     onPermissionGranted: () -> Unit,
+    introTitle: String? = null,
+    introMessage: String? = null,
     viewModel: StartRunViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -200,9 +208,21 @@ fun StartRunScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val isSimulatingLocation = rememberUpdatedState(uiState.isSimulatingLocation)
+    var showIntro by rememberSaveable { mutableStateOf(true) }
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var locationCallback by remember { mutableStateOf<LocationCallback?>(null) }
+
+    if (showIntro && !introTitle.isNullOrBlank() && !introMessage.isNullOrBlank()) {
+        AlertDialog(
+            onDismissRequest = { showIntro = false },
+            title = { Text(introTitle!!) },
+            text = { Text(introMessage!!) },
+            confirmButton = {
+                TextButton(onClick = { showIntro = false }) { Text("Let’s go") }
+            }
+        )
+    }
     
     // Initialize with error handling
     LaunchedEffect(Unit) {
