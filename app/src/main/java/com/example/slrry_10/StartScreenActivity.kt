@@ -141,10 +141,9 @@ fun StartScreen(
             .fillMaxSize()
             .background(Color.White)
             .padding(horizontal = 26.dp),
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(52.dp))
-
         // Logo
         Text(
             text = "SLRRY",
@@ -161,7 +160,7 @@ fun StartScreen(
                 .background(accentBottom, shape = RoundedCornerShape(6.dp))
         )
 
-        Spacer(modifier = Modifier.height(72.dp))
+        Spacer(modifier = Modifier.height(56.dp))
 
         NeonButton(
             text = "Sign In",
@@ -171,13 +170,13 @@ fun StartScreen(
         )
         Spacer(modifier = Modifier.height(18.dp))
         NeonButton(
-            text = "SIGN Up",
+            text = "Sign Up",
             brush = accentBrush,
             textColor = text,
             onClick = onSignUp
         )
 
-        Spacer(modifier = Modifier.height(70.dp))
+        Spacer(modifier = Modifier.height(52.dp))
 
         // Divider line
         Box(
@@ -196,7 +195,7 @@ fun StartScreen(
         Spacer(modifier = Modifier.height(18.dp))
 
         GoogleButton(onClick = onGoogleSignUp)
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 
