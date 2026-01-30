@@ -2,6 +2,7 @@ package com.example.slrry_10
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -50,6 +51,9 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -120,8 +124,59 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     var friends by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var incomingRequests by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var showAddFriend by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    fun goToStartScreen() {
+        try {
+            val i = Intent(context, StartScreenActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(i)
+        } catch (_: Exception) {}
+    }
+
+    suspend fun deleteAccountDataBestEffort(uid: String) {
+        val db = FirebaseDatabase.getInstance()
+
+        // Remove user profile + any nested nodes under `/users/{uid}` (goals, capturedAreas, friends, etc).
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("users").child(uid).removeValue()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+
+        // Remove runs for this user.
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("runs").child(uid).removeValue()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+
+        // Best-effort cleanup of owned territory cells so they don't remain on world map/leaderboards.
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("territory").child("cells").get()
+                .addOnSuccessListener { snap ->
+                    val updates = hashMapOf<String, Any?>()
+                    snap.children.forEach { cellSnap ->
+                        val ownerUid = cellSnap.child("ownerUid").getValue(String::class.java)
+                        if (ownerUid == uid) {
+                            updates[cellSnap.key ?: return@forEach] = null
+                        }
+                    }
+                    if (updates.isEmpty()) {
+                        cont.resume(Unit)
+                    } else {
+                        db.reference.child("territory").child("cells").updateChildren(updates)
+                            .addOnSuccessListener { cont.resume(Unit) }
+                            .addOnFailureListener { cont.resume(Unit) }
+                    }
+                }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+    }
 
     suspend fun loadProfile() {
         val (dbDisplay, dbName, dbEmail) = fetchUserProfile()
@@ -276,6 +331,14 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 }
             )
         }
+
+        item {
+            AccountActionsCard(
+                onLogout = { showLogoutConfirm = true },
+                onDeleteAccount = { showDeleteConfirm = true },
+                isDeleting = isDeleting
+            )
+        }
     }
 
     if (showAddFriend) {
@@ -289,6 +352,128 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 }
             }
         )
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Logout?") },
+            text = { Text("You’ll be returned to the first screen.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirm = false
+                        try {
+                            FirebaseAuth.getInstance().signOut()
+                        } catch (_: Exception) {}
+                        goToStartScreen()
+                    }
+                ) { Text("Logout") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) showDeleteConfirm = false },
+            title = { Text("Delete account?") },
+            text = {
+                Text("This will permanently delete your account and data. This can’t be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = {
+                        val auth = FirebaseAuth.getInstance()
+                        val user = auth.currentUser
+                        val uid = user?.uid
+
+                        if (user == null || uid.isNullOrBlank()) {
+                            showDeleteConfirm = false
+                            Toast.makeText(context, "No signed-in user found.", Toast.LENGTH_SHORT).show()
+                            goToStartScreen()
+                            return@TextButton
+                        }
+
+                        isDeleting = true
+                        scope.launch {
+                            deleteAccountDataBestEffort(uid)
+
+                            suspendCancellableCoroutine<Unit> { cont ->
+                                user.delete()
+                                    .addOnSuccessListener { cont.resume(Unit) }
+                                    .addOnFailureListener { cont.resume(Unit) }
+                            }
+
+                            try { auth.signOut() } catch (_: Exception) {}
+                            isDeleting = false
+                            showDeleteConfirm = false
+                            Toast.makeText(
+                                context,
+                                "Account deleted. If this failed due to security, please log in again and retry.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            goToStartScreen()
+                        }
+                    }
+                ) {
+                    if (isDeleting) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Deleting…")
+                    } else {
+                        Text("Delete")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !isDeleting, onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AccountActionsCard(
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    isDeleting: Boolean
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Account", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+            ) {
+                Text("Logout", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = onDeleteAccount,
+                enabled = !isDeleting,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE53935),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFEF9A9A),
+                    disabledContentColor = Color.White
+                )
+            ) {
+                Text("Delete account", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
