@@ -229,9 +229,9 @@ fun MapsHubScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.94f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column {
                     IconButton(
