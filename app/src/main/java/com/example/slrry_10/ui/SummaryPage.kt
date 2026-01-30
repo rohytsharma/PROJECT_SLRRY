@@ -89,7 +89,7 @@ fun SummaryPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 250.dp),
+                .padding(top = 240.dp),
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = accent),
             elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
@@ -100,7 +100,7 @@ fun SummaryPage(
                     .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PillMetric(value = String.format("%.2f", distanceKm), unit = "Km", label = "Distance", color = darkText)
+                PillMetric(value = String.format("%.2f", distanceKm), unit = "km", label = "Distance", color = darkText)
                 VerticalSeparator(darkText)
                 PillMetric(value = durationText, unit = "", label = "Duration", color = darkText)
                 VerticalSeparator(darkText)
