@@ -879,12 +879,12 @@ private fun AboutCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("About", fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("About", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Spacer(modifier = Modifier.height(10.dp))
 
             val ageText = age?.takeIf { it > 0 }?.toString() ?: "—"
-            Text("Age: $ageText", color = Color(0xFF6E757A), fontSize = 12.sp)
+            Text("Age: $ageText", color = Color(0xFF6E757A), fontSize = 13.sp)
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
