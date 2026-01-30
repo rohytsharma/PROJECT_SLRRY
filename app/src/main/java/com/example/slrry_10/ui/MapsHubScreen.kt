@@ -307,7 +307,7 @@ private fun OwnerChip(owner: ZoneOwner) {
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -320,7 +320,7 @@ private fun OwnerChip(owner: ZoneOwner) {
                 text = owner.displayName,
                 color = text,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Medium
             )
         }
     }
