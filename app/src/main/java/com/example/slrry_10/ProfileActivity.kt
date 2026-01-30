@@ -492,9 +492,14 @@ private fun FriendsCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Friends", fontWeight = FontWeight.Bold)
+                Text("Friends", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                 IconButton(onClick = onAddClick) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = "Add friend")
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = "Add friend",
+                        tint = Mint,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
