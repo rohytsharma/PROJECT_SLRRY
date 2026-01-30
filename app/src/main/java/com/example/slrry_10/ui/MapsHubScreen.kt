@@ -224,13 +224,14 @@ fun MapsHubScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 12.dp),
+                .padding(start = 12.dp)
+                .padding(top = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Card(
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.85f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column {
                     IconButton(
@@ -302,7 +303,7 @@ private fun OwnerChip(owner: ZoneOwner) {
     val text = Color(0xFF111416)
     Card(
         shape = RoundedCornerShape(999.dp),
-        colors = CardDefaults.cardColors(containerColor = bg.copy(alpha = 0.22f)),
+        colors = CardDefaults.cardColors(containerColor = bg.copy(alpha = 0.18f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
