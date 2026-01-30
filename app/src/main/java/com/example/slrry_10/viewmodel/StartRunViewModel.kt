@@ -40,6 +40,7 @@ data class StartRunUiState(
     val currentLocation: LocationModel? = null,
     val isTracking: Boolean = false,
     val isPaused: Boolean = false,
+    val isSimulatingLocation: Boolean = false,
     val runPath: List<LocationModel> = emptyList(),
     val currentSession: RunSession? = null,
     val searchResults: List<SearchResult> = emptyList(),
@@ -73,9 +74,16 @@ class StartRunViewModel(
     private val areasRepo = CapturedAreasRepository()
     private val auth = FirebaseAuth.getInstance()
 
+    private var runStartLocation: LocationModel? = null
+    private var hasCapturedThisRun: Boolean = false
+
     init {
         // Load user's captured areas for personal/friends maps.
         refreshMyCapturedAreas()
+    }
+
+    fun setSimulatingLocation(isSimulating: Boolean) {
+        _uiState.value = _uiState.value.copy(isSimulatingLocation = isSimulating)
     }
     
     fun updateLocation(location: LocationModel) {
@@ -97,6 +105,7 @@ class StartRunViewModel(
                 
                 if (currentState.isTracking) {
                     updateCurrentSession()
+                    maybeAutoCaptureClosedLoop(newPath, location)
                 }
             }
         }
@@ -109,6 +118,10 @@ class StartRunViewModel(
         accumulatedDurationSec = 0L
         timerBaseMs = now
 
+        val startLoc = _uiState.value.currentLocation
+        runStartLocation = startLoc
+        hasCapturedThisRun = false
+
         val session = RunSession(
             id = System.currentTimeMillis().toString(),
             startTime = now,
@@ -118,7 +131,7 @@ class StartRunViewModel(
             isTracking = true,
             isPaused = false,
             currentSession = session,
-            runPath = emptyList(),
+            runPath = startLoc?.let { listOf(it) } ?: emptyList(),
             screenState = RunScreenState.RUNNING
         )
 
@@ -196,6 +209,49 @@ class StartRunViewModel(
             currentSession = session,
             screenState = RunScreenState.SUMMARY
         )
+    }
+
+    private fun maybeAutoCaptureClosedLoop(path: List<LocationModel>, current: LocationModel) {
+        if (hasCapturedThisRun) return
+        val start = runStartLocation ?: return
+        if (path.size < 12) return
+
+        val distanceMeters = computeDistanceForPath(path)
+        if (distanceMeters < 50.0) return
+
+        val distToStart = calculateDistance(start, current)
+        if (distToStart > 15.0) return
+
+        // Close the polygon explicitly for stable area calcs.
+        val polygon = buildList {
+            addAll(path)
+            if (isNotEmpty()) {
+                val first = first()
+                val last = last()
+                if (first.latitude != last.latitude || first.longitude != last.longitude) add(first)
+            }
+        }
+
+        val area = try { locationRepo.calculateArea(polygon) } catch (_: Throwable) { 0.0 }
+        // Allow small loops on emulator; still ignore truly degenerate polygons.
+        if (area <= 0.5) return
+
+        val areaModel = AreaModel(polygon = polygon, area = area)
+        hasCapturedThisRun = true
+
+        val state = _uiState.value
+        val updatedSession = state.currentSession?.copy(
+            capturedAreas = (state.currentSession.capturedAreas + areaModel)
+        )
+        _uiState.value = state.copy(
+            capturedAreas = state.capturedAreas + areaModel,
+            currentSession = updatedSession
+        )
+
+        // Persist so it shows up in personal/friends/world maps + leaderboard.
+        viewModelScope.launch(Dispatchers.IO) {
+            areasRepo.addArea(areaModel)
+        }
     }
 
     fun openMaps() {

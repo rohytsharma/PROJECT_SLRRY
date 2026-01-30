@@ -266,7 +266,11 @@ fun MapsHubScreen(
             ) {
                 Icon(Icons.Filled.Castle, contentDescription = null, tint = text, modifier = Modifier.height(30.dp))
                 Text(
-                    text = String.format("%.0fm²", totalArea),
+                    text = when {
+                        totalArea <= 0.0 -> "0m²"
+                        totalArea < 1.0 -> "<1m²"
+                        else -> String.format("%.0fm²", totalArea)
+                    },
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = text

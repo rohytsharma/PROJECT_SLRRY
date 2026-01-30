@@ -199,6 +199,7 @@ fun StartRunScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isSimulatingLocation = rememberUpdatedState(uiState.isSimulatingLocation)
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var locationCallback by remember { mutableStateOf<LocationCallback?>(null) }
@@ -221,6 +222,7 @@ fun StartRunScreen(
             
             val callback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
+                    if (isSimulatingLocation.value) return
                     result.lastLocation?.let { location ->
                         // Update location in ViewModel (non-blocking)
                         val locationModel = LocationModel(
@@ -309,7 +311,7 @@ fun StartRunScreen(
     LaunchedEffect(uiState.runPath.size) {
         if (uiState.runPath.isNotEmpty() && mapLibreMap != null) {
             // Debounce updates - only update every 1000ms to reduce load
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(if (uiState.isSimulatingLocation) 120 else 1000)
             if (mapLibreMap != null && uiState.runPath.isNotEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     try {
@@ -375,7 +377,10 @@ fun StartRunScreen(
             mapLibreMap = mapLibreMap,
             uiState = uiState,
             onMapReady = { map -> mapLibreMap = map },
-            showMap = true
+            showMap = true,
+            enableUserMarkerDrag = (uiState.screenState == RunScreenState.RUNNING && uiState.isTracking),
+            onSimulatedLocation = { loc -> viewModel.updateLocation(loc) },
+            onSimulatedDragState = { sim -> viewModel.setSimulatingLocation(sim) }
         )
 
         // Screen Switcher (UI overlays only; map persists)

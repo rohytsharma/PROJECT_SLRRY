@@ -35,13 +35,17 @@ fun SummaryPage(
     val darkText = Color(0xFF111416)
     val muted = Color(0xFF7E868C)
 
-    // Keep metrics zero for now (per your earlier request)
-    val distanceKm = 0.00
-    val durationText = "00:00"
-    val avgPace = "0'00''"
+    val distanceKm = (uiState.currentSession?.distance ?: 0.0) / 1000.0
+    val durationText = formatDuration(uiState.currentSession?.duration ?: 0L)
+    val avgPace = uiState.currentSession?.averagePace ?: "0'00''"
     val stepLength = "0.00 m"
     val calories = "0 kcal"
-    val area = "0 spm"
+    val capturedAreaSqM = uiState.currentSession?.capturedAreas?.sumOf { it.area } ?: 0.0
+    val area = when {
+        capturedAreaSqM <= 0.0 -> "0 m²"
+        capturedAreaSqM < 1.0 -> "<1 m²"
+        else -> String.format("%.0f m²", capturedAreaSqM)
+    }
     val elevation = "0 ft"
 
     Box(modifier = modifier.fillMaxSize()) {
