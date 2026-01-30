@@ -36,7 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Intent
-import com.example.slrry_10.FriendsLeaderboardActivity
+import com.example.slrry_10.LeaderboardMode
+import com.example.slrry_10.leaderboardIntent
 import com.example.slrry_10.model.AreaModel
 import com.example.slrry_10.model.LocationModel
 import com.example.slrry_10.viewmodel.MapsTab
@@ -90,8 +91,16 @@ fun MapsHubScreen(
     val totalArea = selectedOwners.sumOf { owner -> owner.areas.sumOf { it.area } }
 
     var rendered by remember { mutableStateOf(RenderedMapIds()) }
+    var hasCentered by remember(uiState.mapsTab) { mutableStateOf(false) }
 
-    LaunchedEffect(mapLibreMap, uiState.mapsTab, uiState.capturedAreas, uiState.worldOwners, uiState.friendsOwners) {
+    LaunchedEffect(
+        mapLibreMap,
+        uiState.mapsTab,
+        uiState.currentLocation,
+        uiState.capturedAreas,
+        uiState.worldOwners,
+        uiState.friendsOwners
+    ) {
         val map = mapLibreMap ?: return@LaunchedEffect
         map.getStyle { style ->
             // Remove previously rendered layers/sources from our maps screen.
@@ -114,14 +123,15 @@ fun MapsHubScreen(
             rendered = RenderedMapIds(layerIds = newLayerIds, sourceIds = newSourceIds)
         }
 
-        // Always snap camera to the last known location (tight zoom).
-        uiState.currentLocation?.let { loc ->
+        // Snap camera to the user's current location (tight zoom) once per tab selection.
+        if (!hasCentered) uiState.currentLocation?.let { loc ->
             try {
                 val camera = CameraPosition.Builder()
                     .target(LatLng(loc.latitude, loc.longitude))
                     .zoom(17.0)
                     .build()
                 map.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 450)
+                hasCentered = true
             } catch (_: Exception) {}
         }
     }
@@ -150,7 +160,12 @@ fun MapsHubScreen(
                 )
                 IconButton(
                     onClick = {
-                        context.startActivity(Intent(context, FriendsLeaderboardActivity::class.java))
+                        val mode = when (uiState.mapsTab) {
+                            MapsTab.WORLD -> LeaderboardMode.WORLD
+                            MapsTab.PERSONAL -> LeaderboardMode.PERSONAL
+                            MapsTab.FRIENDS -> LeaderboardMode.FRIENDS
+                        }
+                        context.startActivity(leaderboardIntent(context, mode))
                     }
                 ) {
                     Icon(Icons.Filled.Leaderboard, contentDescription = "Leaderboard", tint = text)
