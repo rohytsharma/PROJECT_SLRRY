@@ -359,7 +359,7 @@ fun PausedWithMapScreen(
                 )
                 MetricCard(
                     value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
-                    label = "area",
+                    label = "Area",
                     icon = Icons.Default.Castle
                 )
             }
