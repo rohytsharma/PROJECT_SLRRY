@@ -28,7 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -135,7 +135,7 @@ fun GenderScreen(
             color = Color(0xFF3F3F3F)
         )
         Spacer(modifier = Modifier.height(12.dp))
-        Divider(color = Color(0xFFB0B0B0), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFFB0B0B0), thickness = 1.dp)
         Spacer(modifier = Modifier.height(12.dp))
 
         options.forEachIndexed { index, (label, emoji) ->

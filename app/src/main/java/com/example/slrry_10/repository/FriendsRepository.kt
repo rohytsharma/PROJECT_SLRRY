@@ -19,6 +19,21 @@ class FriendsRepository(
 ) {
     private fun currentUid(): String? = auth.currentUser?.uid
 
+    suspend fun getCurrentUserSummary(): UserSummary? {
+        val uid = currentUid() ?: return null
+        return getUserSummary(uid)
+    }
+
+    suspend fun getUserSummary(uid: String): UserSummary? {
+        if (uid.isBlank()) return null
+        val snap = suspendCancellableCoroutine<DataSnapshot?> { cont ->
+            db.reference.child("users").child(uid).get()
+                .addOnSuccessListener { cont.resume(it) }
+                .addOnFailureListener { cont.resume(null) }
+        } ?: return null
+        return snapshotToUserSummary(uid, snap)
+    }
+
     /**
      * Send a friend request to [friendUid]. The receiver will see it under /friendRequests/{theirUid}/{myUid}.
      */
@@ -80,11 +95,11 @@ class FriendsRepository(
      * Fetch a small page of users for the "Add friend" dialog.
      * (RTDB doesn't support full text search; this is a pragmatic "show all" for small datasets.)
      */
-    suspend fun listAllUsers(limit: Int = 50): List<UserSummary> {
+    suspend fun listAllUsers(limit: Int = 50, includeSelf: Boolean = false): List<UserSummary> {
         val uid = currentUid()
-        val ref = db.reference.child("users")
+        // IMPORTANT: don't rely on displayNameLower being present; just read the first page.
         val snap = suspendCancellableCoroutine<DataSnapshot?> { cont ->
-            ref.orderByChild("displayNameLower")
+            db.reference.child("users")
                 .limitToFirst(limit)
                 .get()
                 .addOnSuccessListener { cont.resume(it) }
@@ -93,7 +108,7 @@ class FriendsRepository(
 
         return snap.children.mapNotNull { u ->
             val id = u.key ?: return@mapNotNull null
-            if (uid != null && id == uid) return@mapNotNull null
+            if (!includeSelf && uid != null && id == uid) return@mapNotNull null
             snapshotToUserSummary(id, u)
         }.sortedBy { it.displayName.lowercase() }
     }
@@ -143,10 +158,25 @@ class FriendsRepository(
     }
 
     private fun snapshotToUserSummary(uid: String, snap: DataSnapshot): UserSummary {
-        val name = snap.child("displayName").getValue(String::class.java)
-            ?: snap.child("name").getValue(String::class.java)
-            ?: "Runner"
-        val email = snap.child("email").getValue(String::class.java) ?: ""
+        val displayName = snap.child("displayName").getValue(String::class.java)?.trim().orEmpty()
+        val onboardingName = snap.child("name").getValue(String::class.java)?.trim().orEmpty()
+        val email = snap.child("email").getValue(String::class.java)?.trim().orEmpty()
+        val emailPrefix = email.substringBefore("@").trim()
+
+        // Prefer the user's full name from onboarding when available.
+        // Many Firebase setups default displayName to the email prefix; we don't want that in UI.
+        val name = when {
+            onboardingName.isNotBlank() && (
+                displayName.isBlank() ||
+                    displayName.contains("@") ||
+                    (emailPrefix.isNotBlank() && displayName.equals(emailPrefix, ignoreCase = true)) ||
+                    (emailPrefix.isNotBlank() && displayName.equals(emailPrefix.replace('.', ' '), ignoreCase = true))
+                ) -> onboardingName
+
+            displayName.isNotBlank() -> displayName
+            onboardingName.isNotBlank() -> onboardingName
+            else -> "Runner"
+        }
         val photoUrl = snap.child("photoUrl").getValue(String::class.java) ?: ""
         return UserSummary(uid = uid, displayName = name, email = email, photoUrl = photoUrl)
     }

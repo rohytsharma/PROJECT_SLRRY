@@ -35,13 +35,17 @@ fun SummaryPage(
     val darkText = Color(0xFF111416)
     val muted = Color(0xFF7E868C)
 
-    // Keep metrics zero for now (per your earlier request)
-    val distanceKm = 0.00
-    val durationText = "00:00"
-    val avgPace = "0'00''"
+    val distanceKm = (uiState.currentSession?.distance ?: 0.0) / 1000.0
+    val durationText = formatDuration(uiState.currentSession?.duration ?: 0L)
+    val avgPace = uiState.currentSession?.averagePace ?: "0'00''"
     val stepLength = "0.00 m"
     val calories = "0 kcal"
-    val area = "0 spm"
+    val capturedAreaSqM = uiState.currentSession?.capturedAreas?.sumOf { it.area } ?: 0.0
+    val area = when {
+        capturedAreaSqM <= 0.0 -> "0 m²"
+        capturedAreaSqM < 1.0 -> "<1 m²"
+        else -> String.format("%.0f m²", capturedAreaSqM)
+    }
     val elevation = "0 ft"
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -85,7 +89,7 @@ fun SummaryPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 250.dp),
+                .padding(top = 240.dp),
             shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = accent),
             elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
@@ -96,7 +100,7 @@ fun SummaryPage(
                     .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                PillMetric(value = String.format("%.2f", distanceKm), unit = "Km", label = "Distance", color = darkText)
+                PillMetric(value = String.format("%.2f", distanceKm), unit = "km", label = "Distance", color = darkText)
                 VerticalSeparator(darkText)
                 PillMetric(value = durationText, unit = "", label = "Duration", color = darkText)
                 VerticalSeparator(darkText)

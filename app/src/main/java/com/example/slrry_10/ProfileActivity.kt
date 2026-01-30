@@ -1,10 +1,13 @@
 package com.example.slrry_10
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,13 +17,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,9 +36,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,14 +48,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -57,8 +61,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.slrry_10.model.RunSession
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.repository.FriendsRepository
@@ -74,6 +80,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.coroutines.resume
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,15 +100,20 @@ class ProfileActivity : ComponentActivity() {
 
 @Composable
 fun ProfileScreen(onBack: () -> Unit = {}) {
-    val background = Color(0xFFF5F1EB)
-    val header = Color(0xFF111416)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Light green page background + neon header to match the app's premium look.
+    val background = Mint.copy(alpha = 0.14f)
+    val header = Mint
     val textGray = Color(0xFF6E757A)
 
     val repo = remember { FirebaseUserRepoImpl() }
     var displayName by remember { mutableStateOf("—") }
     var email by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf<Int?>(null) }
+    var bio by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("Beginner") }
     var weeklyGoalKm by remember { mutableStateOf<Int?>(null) }
+    var weeklyGoalActiveHours by remember { mutableStateOf<Int?>(null) }
     var weekDistanceKm by remember { mutableStateOf(0) }
     var weekActiveHours by remember { mutableStateOf(0) }
     var totalDistanceKm by remember { mutableStateOf(0.0) }
@@ -111,22 +124,96 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     var friends by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var incomingRequests by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var showAddFriend by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
-        val (nameFromDb, emailFromDb) = fetchUserProfile()
+    fun goToStartScreen() {
+        try {
+            val i = Intent(context, StartScreenActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(i)
+        } catch (_: Exception) {}
+    }
+
+    suspend fun deleteAccountDataBestEffort(uid: String) {
+        val db = FirebaseDatabase.getInstance()
+
+        // Remove user profile + any nested nodes under `/users/{uid}` (goals, capturedAreas, friends, etc).
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("users").child(uid).removeValue()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+
+        // Remove runs for this user.
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("runs").child(uid).removeValue()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+
+        // Best-effort cleanup of owned territory cells so they don't remain on world map/leaderboards.
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.reference.child("territory").child("cells").get()
+                .addOnSuccessListener { snap ->
+                    val updates = hashMapOf<String, Any?>()
+                    snap.children.forEach { cellSnap ->
+                        val ownerUid = cellSnap.child("ownerUid").getValue(String::class.java)
+                        if (ownerUid == uid) {
+                            updates[cellSnap.key ?: return@forEach] = null
+                        }
+                    }
+                    if (updates.isEmpty()) {
+                        cont.resume(Unit)
+                    } else {
+                        db.reference.child("territory").child("cells").updateChildren(updates)
+                            .addOnSuccessListener { cont.resume(Unit) }
+                            .addOnFailureListener { cont.resume(Unit) }
+                    }
+                }
+                .addOnFailureListener { cont.resume(Unit) }
+        }
+    }
+
+    suspend fun loadProfile() {
+        val (dbDisplay, dbName, dbEmail) = fetchUserProfile()
+        val (ageFromDb, bioFromDb) = fetchUserExtras()
         val authUser = FirebaseAuth.getInstance().currentUser
 
-        displayName = nameFromDb
-            .takeIf { !it.isNullOrBlank() }
-            ?: authUser?.displayName
-            ?: "Runner"
-        email = emailFromDb
+        val resolvedEmail = dbEmail
             .takeIf { !it.isNullOrBlank() }
             ?: authUser?.email
             ?: ""
+        val emailPrefix = resolvedEmail.substringBefore("@").trim()
 
-        weeklyGoalKm = fetchWeeklyGoalKm()
+        fun looksLikeEmailishName(n: String): Boolean {
+            val s = n.trim()
+            if (s.isBlank()) return true
+            if (s.contains("@")) return true
+            if (emailPrefix.isNotBlank() && s.equals(emailPrefix, ignoreCase = true)) return true
+            if (emailPrefix.isNotBlank() && s.equals(emailPrefix.replace('.', ' '), ignoreCase = true)) return true
+            return false
+        }
+
+        val resolvedName: String = when {
+            !dbName.isNullOrBlank() && looksLikeEmailishName(dbDisplay.orEmpty()) -> dbName.orEmpty()
+            !dbDisplay.isNullOrBlank() && !looksLikeEmailishName(dbDisplay) -> dbDisplay.orEmpty()
+            !dbName.isNullOrBlank() -> dbName.orEmpty()
+            authUser?.displayName?.takeIf { !looksLikeEmailishName(it) } != null -> authUser.displayName.orEmpty()
+            else -> "Runner"
+        }.trim().ifBlank { "Runner" }
+
+        displayName = resolvedName
+        email = resolvedEmail
+        age = ageFromDb
+        bio = bioFromDb.orEmpty()
+
+        val (goalKm, goalHours) = fetchGoals()
+        weeklyGoalKm = goalKm
+        weeklyGoalActiveHours = goalHours
 
         val runs = repo.getRunSessions()
         val now = System.currentTimeMillis()
@@ -153,6 +240,21 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         incomingRequests = friendsRepo.listIncomingFriendRequests()
     }
 
+    LaunchedEffect(Unit) {
+        loadProfile()
+    }
+
+    // When returning from Edit Profile, refresh automatically.
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { loadProfile() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -163,10 +265,22 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         item {
             ProfileHeader(
                 onBack = onBack,
+                onEdit = {
+                    try {
+                        context.startActivity(Intent(context, EditProfileActivity::class.java))
+                    } catch (_: Exception) {}
+                },
                 headerColor = header,
                 displayName = displayName,
                 subtitle = level,
                 email = email
+            )
+        }
+
+        item {
+            AboutCard(
+                age = age,
+                bio = bio
             )
         }
 
@@ -184,7 +298,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         ProgressCard(
             title = "Active Time",
                 current = weekActiveHours,
-            goal = 25,
+            goal = (weeklyGoalActiveHours ?: 25).coerceAtLeast(1),
             unit = "hrs",
             textGray = textGray
         )
@@ -217,6 +331,14 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 }
             )
         }
+
+        item {
+            AccountActionsCard(
+                onLogout = { showLogoutConfirm = true },
+                onDeleteAccount = { showDeleteConfirm = true },
+                isDeleting = isDeleting
+            )
+        }
     }
 
     if (showAddFriend) {
@@ -230,6 +352,128 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 }
             }
         )
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Logout?") },
+            text = { Text("You’ll be returned to the first screen.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirm = false
+                        try {
+                            FirebaseAuth.getInstance().signOut()
+                        } catch (_: Exception) {}
+                        goToStartScreen()
+                    }
+                ) { Text("Logout") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) showDeleteConfirm = false },
+            title = { Text("Delete account?") },
+            text = {
+                Text("This will permanently delete your account and data. This can’t be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = {
+                        val auth = FirebaseAuth.getInstance()
+                        val user = auth.currentUser
+                        val uid = user?.uid
+
+                        if (user == null || uid.isNullOrBlank()) {
+                            showDeleteConfirm = false
+                            Toast.makeText(context, "No signed-in user found.", Toast.LENGTH_SHORT).show()
+                            goToStartScreen()
+                            return@TextButton
+                        }
+
+                        isDeleting = true
+                        scope.launch {
+                            deleteAccountDataBestEffort(uid)
+
+                            suspendCancellableCoroutine<Unit> { cont ->
+                                user.delete()
+                                    .addOnSuccessListener { cont.resume(Unit) }
+                                    .addOnFailureListener { cont.resume(Unit) }
+                            }
+
+                            try { auth.signOut() } catch (_: Exception) {}
+                            isDeleting = false
+                            showDeleteConfirm = false
+                            Toast.makeText(
+                                context,
+                                "Account deleted. If this failed due to security, please log in again and retry.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            goToStartScreen()
+                        }
+                    }
+                ) {
+                    if (isDeleting) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Deleting…")
+                    } else {
+                        Text("Delete")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !isDeleting, onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AccountActionsCard(
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    isDeleting: Boolean
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Account", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+            ) {
+                Text("Logout", fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = onDeleteAccount,
+                enabled = !isDeleting,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE53935),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFEF9A9A),
+                    disabledContentColor = Color.White
+                )
+            ) {
+                Text("Delete account", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -248,9 +492,14 @@ private fun FriendsCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Friends", fontWeight = FontWeight.Bold)
+                Text("Friends", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                 IconButton(onClick = onAddClick) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = "Add friend")
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = "Add friend",
+                        tint = Mint,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
@@ -268,7 +517,6 @@ private fun FriendsCard(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(f.displayName, fontWeight = FontWeight.SemiBold)
-                            if (f.email.isNotBlank()) Text(f.email, fontSize = 12.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -290,85 +538,94 @@ private fun AddFriendDialog(
     onDismiss: () -> Unit,
     onFriendAdded: () -> Unit
 ) {
-    var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         // "Show all users" when opening the dialog (paged).
-        isSearching = true
+        isLoading = true
         results = friendsRepo.listAllUsers(limit = 50)
-        isSearching = false
+        isLoading = false
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add friend") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = {
-                        query = it
-                        isSearching = true
-                        scope.launch {
-                            results = if (it.trim().isBlank()) {
-                                friendsRepo.listAllUsers(limit = 50)
-                            } else {
-                                friendsRepo.searchUsersByNamePrefix(it)
-                            }
-                            isSearching = false
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    placeholder = { Text("Search by name") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors()
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (isSearching) {
-                    Text("Searching…", fontSize = 12.sp, color = Color.Gray)
-                } else if (!isSearching && results.isEmpty()) {
-                    Text("No users found.", fontSize = 12.sp, color = Color.Gray)
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Add friend", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
+                    ) { Text("Done") }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-                results.take(10).forEach { u ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (isLoading) {
+                    Text("Loading users…", fontSize = 12.sp, color = Color.Gray)
+                } else if (results.isEmpty()) {
+                    Text(
+                        "No user profiles found in Realtime Database yet.\n" +
+                            "This list shows `/users` nodes (not Firebase Auth users). " +
+                            "Log in once with the other accounts so their `/users/{uid}` gets created.",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 6.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(u.displayName, fontWeight = FontWeight.SemiBold)
-                            if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
-                        }
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    friendsRepo.sendFriendRequest(u.uid)
-                                    onFriendAdded()
+                        items(items = results, key = { it.uid }) { u ->
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(u.displayName, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                friendsRepo.sendFriendRequest(u.uid)
+                                                onFriendAdded()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Mint,
+                                            contentColor = Color.White
+                                        )
+                                    ) {
+                                        Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
-                        ) {
-                            Text("Add", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = Mint, contentColor = Color.White)
-            ) { Text("Done") }
         }
-    )
+    }
 }
 
 @Composable
@@ -395,7 +652,6 @@ private fun FriendRequestsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(u.displayName, fontWeight = FontWeight.SemiBold)
-                        if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
                     }
                     Button(
                         onClick = { onAccept(u.uid) },
@@ -412,16 +668,19 @@ private fun FriendRequestsCard(
 @Composable
 private fun ProfileHeader(
     onBack: () -> Unit,
+    onEdit: () -> Unit,
     headerColor: Color,
     displayName: String,
     subtitle: String,
     email: String
 ) {
+    val headerText = Color(0xFF111416)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(260.dp)
             .background(headerColor)
+            .statusBarsPadding()
     ) {
         IconButton(
             onClick = onBack,
@@ -429,7 +688,16 @@ private fun ProfileHeader(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = headerText)
+        }
+
+        IconButton(
+            onClick = onEdit,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        ) {
+            Icon(Icons.Default.Edit, contentDescription = "Edit profile", tint = headerText)
         }
 
         Column(
@@ -441,19 +709,19 @@ private fun ProfileHeader(
                 modifier = Modifier
                     .size(90.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f)),
+                    .background(Color.White.copy(alpha = 0.55f)),
                 contentAlignment = Alignment.Center
             ) {
                 val initial = displayName.trim().firstOrNull()?.uppercase() ?: "R"
-                Text(initial, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(initial, color = headerText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(displayName, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+            Text(displayName, color = headerText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = headerText.copy(alpha = 0.75f), fontSize = 14.sp)
             if (email.isNotBlank()) {
-                Text(email, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                Text(email, color = headerText.copy(alpha = 0.65f), fontSize = 12.sp)
             }
         }
 
@@ -461,8 +729,8 @@ private fun ProfileHeader(
             "Profile",
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp),
-            color = Color.White,
+                .padding(top = 10.dp),
+            color = headerText,
             fontWeight = FontWeight.Bold
         )
     }
@@ -479,8 +747,10 @@ private fun ProgressCard(
     val progress = current / goal.toFloat()
 
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, fontWeight = FontWeight.Bold)
@@ -500,7 +770,9 @@ private fun AchievementCard(
 ) {
     Card(
         modifier = Modifier.padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Total progress", fontWeight = FontWeight.Bold)
@@ -540,8 +812,10 @@ private data class StreakDay(val date: LocalDate, val status: StreakStatus)
 @Composable
 private fun StreaksCard(days: List<StreakDay>) {
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("STREAKS", fontWeight = FontWeight.Bold)
@@ -551,7 +825,7 @@ private fun StreaksCard(days: List<StreakDay>) {
                 columns = GridCells.Fixed(7),
                 modifier = Modifier.height(140.dp)
             ) {
-                items(days) { day ->
+                gridItems(days) { day ->
                     Box(
                         modifier = Modifier
                             .padding(6.dp)
@@ -594,6 +868,33 @@ private fun buildStreakDays(runs: List<RunSession>): List<StreakDay> {
     }
 }
 
+@Composable
+private fun AboutCard(
+    age: Int?,
+    bio: String
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("About", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            val ageText = age?.takeIf { it > 0 }?.toString() ?: "—"
+            Text("Age: $ageText", color = Color(0xFF6E757A), fontSize = 13.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = bio.trim().ifBlank { "Add a bio to tell friends about you." },
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
 private suspend fun fetchWeeklyGoalKm(): Int? {
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
     val ref = FirebaseDatabase.getInstance().reference
@@ -609,19 +910,51 @@ private suspend fun fetchWeeklyGoalKm(): Int? {
     }
 }
 
-private suspend fun fetchUserProfile(): Pair<String?, String?> {
+private suspend fun fetchGoals(): Pair<Int?, Int?> {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Pair(null, null)
+    val ref = FirebaseDatabase.getInstance().reference
+        .child("users")
+        .child(uid)
+        .child("goals")
+
+    return suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap ->
+                val km = snap.child("weeklyDistanceKm").getValue(Int::class.java)
+                val hrs = snap.child("weeklyActiveHours").getValue(Int::class.java)
+                cont.resume(Pair(km, hrs))
+            }
+            .addOnFailureListener { cont.resume(Pair(null, null)) }
+    }
+}
+
+private suspend fun fetchUserExtras(): Pair<Int?, String?> {
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Pair(null, null)
     val ref = FirebaseDatabase.getInstance().reference.child("users").child(uid)
     return suspendCancellableCoroutine { cont ->
         ref.get()
             .addOnSuccessListener { snap ->
-                val name = snap.child("displayName").getValue(String::class.java)
-                    ?: snap.child("name").getValue(String::class.java)
+                val age = snap.child("age").getValue(Int::class.java)
+                val bio = snap.child("bio").getValue(String::class.java)
+                cont.resume(Pair(age, bio))
+            }
+            .addOnFailureListener { cont.resume(Pair(null, null)) }
+    }
+}
+
+private suspend fun fetchUserProfile(): Triple<String?, String?, String?> {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Triple(null, null, null)
+    val ref = FirebaseDatabase.getInstance().reference.child("users").child(uid)
+    return suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap ->
+                val display = snap.child("displayName").getValue(String::class.java)
+                val name = snap.child("name").getValue(String::class.java)
                 val email = snap.child("email").getValue(String::class.java)
-                cont.resume(Pair(name, email))
+                cont.resume(Triple(display, name, email))
             }
             .addOnFailureListener {
-                cont.resume(Pair(null, null))
+                cont.resume(Triple(null, null, null))
         }
     }
 }

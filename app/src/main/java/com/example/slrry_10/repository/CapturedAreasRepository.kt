@@ -6,6 +6,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
 
 class CapturedAreasRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -42,12 +45,37 @@ class CapturedAreasRepository(
                             val ts = p.child("ts").getValue(Long::class.java) ?: System.currentTimeMillis()
                             LocationModel(latitude = lat, longitude = lon, timestamp = ts)
                         }
-                        AreaModel(polygon = poly, area = areaVal)
+                        val computed = if (areaVal > 0.0) areaVal else approxAreaSqMeters(poly)
+                        AreaModel(polygon = poly, area = computed)
                     }
                     cont.resume(areas)
                 }
                 .addOnFailureListener { cont.resume(emptyList()) }
         }
+    }
+
+    /**
+     * Approx polygon area in m² using an equirectangular projection (good enough for small shapes).
+     * Returns 0 when polygon is invalid.
+     */
+    private fun approxAreaSqMeters(poly: List<LocationModel>): Double {
+        if (poly.size < 3) return 0.0
+        val lat0 = poly.map { it.latitude }.average()
+        val cosLat = cos(lat0 * PI / 180.0).coerceAtLeast(0.2)
+        val metersPerDegLat = 111_320.0
+        val metersPerDegLon = 111_320.0 * cosLat
+
+        // Shoelace formula on projected coordinates.
+        var sum = 0.0
+        for (i in poly.indices) {
+            val j = (i + 1) % poly.size
+            val xi = poly[i].longitude * metersPerDegLon
+            val yi = poly[i].latitude * metersPerDegLat
+            val xj = poly[j].longitude * metersPerDegLon
+            val yj = poly[j].latitude * metersPerDegLat
+            sum += (xi * yj) - (xj * yi)
+        }
+        return abs(sum) * 0.5
     }
 }
 

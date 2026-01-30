@@ -11,12 +11,16 @@ import com.example.slrry_10.model.SearchResult
 import com.example.slrry_10.repository.CapturedAreasRepository
 import com.example.slrry_10.repository.FriendsRepository
 import com.example.slrry_10.repository.LocationRepository
+import com.example.slrry_10.repository.TerritoryRepository
 import com.example.slrry_10.repository.UserRepo
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
@@ -37,6 +41,7 @@ data class StartRunUiState(
     val currentLocation: LocationModel? = null,
     val isTracking: Boolean = false,
     val isPaused: Boolean = false,
+    val isSimulatingLocation: Boolean = false,
     val runPath: List<LocationModel> = emptyList(),
     val currentSession: RunSession? = null,
     val searchResults: List<SearchResult> = emptyList(),
@@ -67,12 +72,19 @@ class StartRunViewModel(
     private var accumulatedDurationSec: Long = 0L
 
     private val friendsRepo = FriendsRepository()
-    private val areasRepo = CapturedAreasRepository()
+    private val territoryRepo = TerritoryRepository()
     private val auth = FirebaseAuth.getInstance()
 
+    private var runStartLocation: LocationModel? = null
+    private var hasCapturedThisRun: Boolean = false
+
     init {
-        // Load user's captured areas for personal/friends maps.
-        refreshMyCapturedAreas()
+        // Load user's territory for personal/friends maps.
+        refreshMyTerritory()
+    }
+
+    fun setSimulatingLocation(isSimulating: Boolean) {
+        _uiState.value = _uiState.value.copy(isSimulatingLocation = isSimulating)
     }
     
     fun updateLocation(location: LocationModel) {
@@ -94,6 +106,7 @@ class StartRunViewModel(
                 
                 if (currentState.isTracking) {
                     updateCurrentSession()
+                    maybeAutoCaptureClosedLoop(newPath, location)
                 }
             }
         }
@@ -106,6 +119,10 @@ class StartRunViewModel(
         accumulatedDurationSec = 0L
         timerBaseMs = now
 
+        val startLoc = _uiState.value.currentLocation
+        runStartLocation = startLoc
+        hasCapturedThisRun = false
+
         val session = RunSession(
             id = System.currentTimeMillis().toString(),
             startTime = now,
@@ -115,7 +132,7 @@ class StartRunViewModel(
             isTracking = true,
             isPaused = false,
             currentSession = session,
-            runPath = emptyList(),
+            runPath = startLoc?.let { listOf(it) } ?: emptyList(),
             screenState = RunScreenState.RUNNING
         )
 
@@ -195,14 +212,58 @@ class StartRunViewModel(
         )
     }
 
+    private fun maybeAutoCaptureClosedLoop(path: List<LocationModel>, current: LocationModel) {
+        if (hasCapturedThisRun) return
+        val start = runStartLocation ?: return
+        if (path.size < 12) return
+
+        val distanceMeters = computeDistanceForPath(path)
+        if (distanceMeters < 50.0) return
+
+        val distToStart = calculateDistance(start, current)
+        if (distToStart > 15.0) return
+
+        // Close the polygon explicitly for stable area calcs.
+        val polygon = buildList {
+            addAll(path)
+            if (isNotEmpty()) {
+                val first = first()
+                val last = last()
+                if (first.latitude != last.latitude || first.longitude != last.longitude) add(first)
+            }
+        }
+
+        val area = try { locationRepo.calculateArea(polygon) } catch (_: Throwable) { 0.0 }
+        // Allow small loops on emulator; still ignore truly degenerate polygons.
+        if (area <= 0.5) return
+
+        val areaModel = AreaModel(polygon = polygon, area = area)
+        hasCapturedThisRun = true
+
+        val state = _uiState.value
+        val updatedSession = state.currentSession?.copy(
+            capturedAreas = (state.currentSession.capturedAreas + areaModel)
+        )
+        _uiState.value = state.copy(
+            currentSession = updatedSession
+        )
+
+        // Persist non-overlapping territory so it shows up in personal/friends/world maps + leaderboard.
+        viewModelScope.launch(Dispatchers.IO) {
+            territoryRepo.capturePolygon(polygon)
+            // Refresh cached map owners after capture.
+            refreshMyTerritory()
+            refreshWorldOwners()
+            refreshFriendsOwners()
+        }
+    }
+
     fun openMaps() {
-        // Ensure we have some data to show for WORLD / FRIENDS.
-        val current = _uiState.value
-        val ensured = ensureDemoOwners(current)
-        _uiState.value = ensured.copy(
+        _uiState.value = _uiState.value.copy(
             screenState = RunScreenState.MAPS,
             mapsTab = MapsTab.PERSONAL
         )
+        refreshWorldOwners()
         refreshFriendsOwners()
     }
 
@@ -212,8 +273,10 @@ class StartRunViewModel(
 
     fun setMapsTab(tab: MapsTab) {
         _uiState.value = _uiState.value.copy(mapsTab = tab)
-        if (tab == MapsTab.FRIENDS) {
-            refreshFriendsOwners()
+        when (tab) {
+            MapsTab.WORLD -> refreshWorldOwners()
+            MapsTab.FRIENDS -> refreshFriendsOwners()
+            MapsTab.PERSONAL -> Unit
         }
     }
     
@@ -355,12 +418,13 @@ class StartRunViewModel(
             
             _uiState.value = currentState.copy(
                 isCapturingArea = false,
-                capturedAreas = currentState.capturedAreas + areaModel,
                 currentAreaPolygon = emptyList()
             )
-            // Persist for friends map + leaderboard.
-            viewModelScope.launch {
-                areasRepo.addArea(areaModel)
+            viewModelScope.launch(Dispatchers.IO) {
+                territoryRepo.capturePolygon(areaModel.polygon)
+                refreshMyTerritory()
+                refreshWorldOwners()
+                refreshFriendsOwners()
             }
         } else {
             _uiState.value = currentState.copy(
@@ -391,67 +455,33 @@ class StartRunViewModel(
         return earthRadius * c
     }
 
-    private fun ensureDemoOwners(state: StartRunUiState): StartRunUiState {
-        // If we already have demo owners, keep them stable.
-        // WORLD is demo; FRIENDS is loaded from RTDB.
-        if (state.worldOwners.isNotEmpty()) return state
-
-        val loc = state.currentLocation ?: LocationModel(0.0, 0.0)
-
-        // If the user has no captured areas yet, we still keep PERSONAL empty,
-        // but WORLD will show example zones so the screen isn't blank.
-        val youAreas = state.capturedAreas
-
-        fun squareArea(center: LocationModel, meters: Double): AreaModel {
-            val lat = center.latitude
-            val lon = center.longitude
-            val latDelta = meters / 111_320.0
-            val lonDelta = meters / (111_320.0 * cos(Math.toRadians(lat)).coerceAtLeast(0.2))
-            val poly = listOf(
-                LocationModel(lat + latDelta, lon - lonDelta),
-                LocationModel(lat + latDelta, lon + lonDelta),
-                LocationModel(lat - latDelta, lon + lonDelta),
-                LocationModel(lat - latDelta, lon - lonDelta)
-            )
-            val area = try {
-                locationRepo.calculateArea(poly)
-            } catch (_: Throwable) {
-                0.0
+    private fun refreshWorldOwners() {
+        viewModelScope.launch {
+            val users = friendsRepo.listAllUsers(limit = 200, includeSelf = true)
+            if (users.isEmpty()) {
+                _uiState.value = _uiState.value.copy(worldOwners = emptyList())
+                return@launch
             }
-            return AreaModel(polygon = poly, area = area)
-        }
 
-        val world = buildList {
-            // You (green) if you have data
-            if (youAreas.isNotEmpty()) {
-                add(ZoneOwner(id = "you", displayName = "You", colorArgb = 0xFFB8FF3A.toInt(), areas = youAreas))
-            }
-            // Two "global" users
-            add(
+            val byOwner = territoryRepo.listAreasByOwner()
+            val owners = users.map { u ->
+                val areas = byOwner[u.uid].orEmpty()
                 ZoneOwner(
-                    id = "world_1",
-                    displayName = "World User 1",
-                    colorArgb = 0xFFF04AA8.toInt(), // pink-ish
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude + 0.0015, longitude = loc.longitude + 0.0010), 120.0))
+                    id = u.uid,
+                    displayName = if (u.uid == auth.currentUser?.uid) "You" else u.displayName,
+                    colorArgb = colorForUid(u.uid),
+                    areas = areas
                 )
-            )
-            add(
-                ZoneOwner(
-                    id = "world_2",
-                    displayName = "World User 2",
-                    colorArgb = 0xFF6BEA5B.toInt(), // green-ish
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude - 0.0018, longitude = loc.longitude - 0.0008), 140.0))
-                )
-            )
-        }
+            }.sortedByDescending { it.areas.sumOf { a -> a.area } }
 
-        return state.copy(worldOwners = world)
+            _uiState.value = _uiState.value.copy(worldOwners = owners)
+        }
     }
 
-    private fun refreshMyCapturedAreas() {
+    private fun refreshMyTerritory() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
-            val areas = areasRepo.getAreasForUser(uid)
+            val areas = territoryRepo.getAreasForUser(uid)
             _uiState.value = _uiState.value.copy(capturedAreas = areas)
         }
     }
@@ -464,13 +494,13 @@ class StartRunViewModel(
                 return@launch
             }
 
+            val byOwner = territoryRepo.listAreasByOwner()
             val owners = friends.map { f ->
-                val areas = areasRepo.getAreasForUser(f.uid)
                 ZoneOwner(
                     id = f.uid,
                     displayName = f.displayName,
                     colorArgb = colorForUid(f.uid),
-                    areas = areas
+                    areas = byOwner[f.uid].orEmpty()
                 )
             }
             _uiState.value = _uiState.value.copy(friendsOwners = owners)

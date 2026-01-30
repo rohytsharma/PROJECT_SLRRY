@@ -16,12 +16,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -33,17 +36,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.model.RunSession
+import com.example.slrry_10.repository.TerritoryRepository
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.MapViewComponent
 import com.example.slrry_10.viewmodel.StartRunUiState
+import com.example.slrry_10.EXTRA_INTRO_MESSAGE
+import com.example.slrry_10.EXTRA_INTRO_TITLE
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.launch
 
 class DashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,8 +112,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @Composable
 fun QuickOverviewCard() {
     val repo = remember { FirebaseUserRepoImpl() }
+    val territoryRepo = remember { TerritoryRepository() }
     var weekKm by remember { mutableStateOf(0.0) }
     var runsCount by remember { mutableStateOf(0) }
+    var totalArea by remember { mutableStateOf<Double?>(null) }
 
     LaunchedEffect(Unit) {
         val now = System.currentTimeMillis()
@@ -112,6 +124,8 @@ fun QuickOverviewCard() {
         val weekRuns = runs.filter { it.startTime >= weekAgo }
         weekKm = weekRuns.sumOf { it.distance } / 1000.0
         runsCount = weekRuns.size
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        totalArea = if (uid.isNullOrBlank()) null else territoryRepo.getTotalAreaForUser(uid)
     }
 
     Card(
@@ -129,7 +143,7 @@ fun QuickOverviewCard() {
                 Text("This week", color = Color.Gray)
             }
 
-            Divider(Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
             Spacer(Modifier.height(16.dp))
 
@@ -139,7 +153,10 @@ fun QuickOverviewCard() {
             ) {
                 OverviewItem(String.format("%.1f KM", weekKm), "This week")
                 OverviewItem("$runsCount Runs", "This week")
-                OverviewItem("—", "Area")
+                OverviewItem(
+                    value = totalArea?.let { String.format("%.0f m²", it) } ?: "—",
+                    label = "Area"
+                )
             }
         }
     }
@@ -181,13 +198,28 @@ fun GoalProgressCard() {
     val repo = remember { FirebaseUserRepoImpl() }
     var weeklyGoalKm by remember { mutableStateOf<Int?>(null) }
     var weeklyDoneKm by remember { mutableStateOf(0.0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    suspend fun reload() {
         weeklyGoalKm = fetchWeeklyGoalKm()
         val now = System.currentTimeMillis()
         val weekAgo = now - 7L * 24L * 60L * 60L * 1000L
         val runs = repo.getRunSessions()
         weeklyDoneKm = runs.filter { it.startTime >= weekAgo }.sumOf { it.distance } / 1000.0
+    }
+
+    LaunchedEffect(Unit) { reload() }
+
+    // Refresh when returning from Edit Profile (goal updates).
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { reload() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
     val goal = weeklyGoalKm
@@ -245,10 +277,14 @@ fun GoalProgressCard() {
 @Composable
 fun RecentActivityCard() {
     val repo = remember { FirebaseUserRepoImpl() }
+    val territoryRepo = remember { TerritoryRepository() }
     var latest by remember { mutableStateOf<RunSession?>(null) }
+    var totalCapturedArea by remember { mutableStateOf<Double?>(null) }
 
     LaunchedEffect(Unit) {
         latest = repo.getRunSessions().firstOrNull()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        totalCapturedArea = if (uid.isNullOrBlank()) null else territoryRepo.getTotalAreaForUser(uid)
     }
 
     Card(
@@ -258,7 +294,7 @@ fun RecentActivityCard() {
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            Text("Recent run", fontWeight = FontWeight.Bold)
+            Text("Recent run", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 if (latest == null) "Tap Start to record a run" else "Your latest recorded run",
                 fontSize = 12.sp,
@@ -276,6 +312,13 @@ fun RecentActivityCard() {
                 Text(latest?.averagePace ?: "—")
                 Text(latest?.duration?.let { "${it / 60} M" } ?: "—")
             }
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Area captured: " + (totalCapturedArea?.let { String.format("%.0f m²", it) } ?: "—"),
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
             Spacer(Modifier.height(12.dp))
 
@@ -336,7 +379,7 @@ fun SuggestedWorkoutsSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Suggested workouts", fontWeight = FontWeight.Bold)
+            Text("Suggested workouts", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 "See all",
                 fontSize = 12.sp,
@@ -351,9 +394,9 @@ fun SuggestedWorkoutsSection() {
         Spacer(Modifier.height(8.dp))
 
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Column(Modifier.padding(16.dp)) {
 
@@ -367,7 +410,12 @@ fun SuggestedWorkoutsSection() {
                 Spacer(Modifier.height(12.dp))
 
                 Button(
-                    onClick = {},
+                    onClick = {
+                        val i = Intent(context, StartRunActivity::class.java)
+                            .putExtra(EXTRA_INTRO_TITLE, "Let’s begin a 21k")
+                            .putExtra(EXTRA_INTRO_MESSAGE, "You can do it — let’s do your 21.1k!")
+                        context.startActivity(i)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DashAccentGreen
@@ -391,7 +439,7 @@ fun ChallengesSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Challenges", fontWeight = FontWeight.Bold)
+            Text("Challenges", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 "See all",
                 fontSize = 12.sp,
@@ -422,9 +470,10 @@ fun ChallengesSection() {
 
 @Composable
 fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -438,7 +487,21 @@ fun ChallengeCard(title: String, modifier: Modifier = Modifier) {
 
             DashboardPrimaryButton(
                 text = "Start now",
-                onClick = {},
+                onClick = {
+                    val (popupTitle, popupMessage) = when {
+                        title.contains("50", ignoreCase = true) ->
+                            "Let’s do your 5k" to "Let’s do your 5k — you got this!"
+                        title.contains("every day", ignoreCase = true) ->
+                            "Let’s begin" to "Consistency wins — let’s start today’s run!"
+                        else ->
+                            "Let’s begin" to "Let’s start your run!"
+                    }
+
+                    val i = Intent(context, StartRunActivity::class.java)
+                        .putExtra(EXTRA_INTRO_TITLE, popupTitle)
+                        .putExtra(EXTRA_INTRO_MESSAGE, popupMessage)
+                    context.startActivity(i)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }

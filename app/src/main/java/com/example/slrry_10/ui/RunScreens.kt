@@ -3,9 +3,11 @@ package com.example.slrry_10.ui
 import android.app.Activity
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
+import android.graphics.PointF
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
@@ -347,7 +350,7 @@ fun PausedWithMapScreen(
                 MetricCard(
                     value = uiState.currentSession?.averagePace ?: "0'00''",
                     label = "Avg Pace",
-                    icon = Icons.Default.DirectionsRun
+                    icon = Icons.AutoMirrored.Filled.DirectionsRun
                 )
                 MetricCard(
                     value = formatDuration(uiState.currentSession?.duration ?: 0L),
@@ -356,7 +359,7 @@ fun PausedWithMapScreen(
                 )
                 MetricCard(
                     value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
-                    label = "area",
+                    label = "Area",
                     icon = Icons.Default.Castle
                 )
             }
@@ -368,7 +371,7 @@ fun PausedWithMapScreen(
         ) {
                 FloatingActionButton(
                     onClick = { viewModel.resumeTracking() },
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(56.dp),
                     containerColor = Color(0xFF4CAF50),
                     shape = CircleShape
                 ) {
@@ -454,7 +457,10 @@ fun MapViewComponent(
     mapLibreMap: MapLibreMap?,
     uiState: StartRunUiState,
     onMapReady: (MapLibreMap) -> Unit,
-    showMap: Boolean
+    showMap: Boolean,
+    enableUserMarkerDrag: Boolean = false,
+    onSimulatedLocation: ((LocationModel) -> Unit)? = null,
+    onSimulatedDragState: ((Boolean) -> Unit)? = null
 ) {
     if (!showMap) return
 
@@ -473,6 +479,7 @@ fun MapViewComponent(
     var offlineDownloadProgress by remember { mutableStateOf<Int?>(null) }
     var hasCenteredOnUser by remember { mutableStateOf(false) }
     var lastFollowUpdateMs by remember { mutableStateOf(0L) }
+    var isDraggingMarker by remember { mutableStateOf(false) }
     
     // Use remember to persist map view across recompositions
     val currentMapView = remember { 
@@ -635,7 +642,64 @@ fun MapViewComponent(
             .fillMaxSize()
             .zIndex(0f),
         update = { view ->
-            // View updates handled by lifecycle observer
+            // Allow emulator-friendly simulation by dragging the current location marker.
+            // This is only active when enabled; otherwise we don't intercept map gestures.
+            val map = internalMap.value
+            val loc = uiState.currentLocation
+            if (!enableUserMarkerDrag || map == null || loc == null) {
+                if (isDraggingMarker) {
+                    isDraggingMarker = false
+                    onSimulatedDragState?.invoke(false)
+                }
+                view.setOnTouchListener(null)
+                return@AndroidView
+            }
+
+            val density = view.resources.displayMetrics.density.coerceAtLeast(1f)
+            val hitRadiusPx = 28f * density // finger friendly
+
+            view.setOnTouchListener { _, ev ->
+                try {
+                    val markerScreen = map.projection.toScreenLocation(LatLng(loc.latitude, loc.longitude))
+                    val dx = ev.x - markerScreen.x
+                    val dy = ev.y - markerScreen.y
+                    val nearMarker = (dx * dx + dy * dy) <= (hitRadiusPx * hitRadiusPx)
+
+                    when (ev.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            if (nearMarker) {
+                                isDraggingMarker = true
+                                onSimulatedDragState?.invoke(true)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            if (!isDraggingMarker) return@setOnTouchListener false
+                            val latLng = map.projection.fromScreenLocation(PointF(ev.x, ev.y))
+                            val sim = LocationModel(
+                                latitude = latLng.latitude,
+                                longitude = latLng.longitude,
+                                timestamp = System.currentTimeMillis()
+                            )
+                            onSimulatedLocation?.invoke(sim)
+                            true
+                        }
+                        MotionEvent.ACTION_UP,
+                        MotionEvent.ACTION_CANCEL -> {
+                            if (isDraggingMarker) {
+                                isDraggingMarker = false
+                                onSimulatedDragState?.invoke(false)
+                                true
+                            } else false
+                        }
+                        else -> false
+                    }
+                } catch (_: Exception) {
+                    false
+                }
+            }
         }
     )
 
@@ -1058,7 +1122,7 @@ fun BottomMetricsAndButton(
             MetricCard(
                 value = uiState.currentSession?.averagePace ?: "0'00''",
                 label = "Avg Pace",
-                icon = Icons.Default.DirectionsRun
+                icon = Icons.AutoMirrored.Filled.DirectionsRun
             )
             MetricCard(
                 value = formatDuration(uiState.currentSession?.duration ?: 0L),
@@ -1066,8 +1130,8 @@ fun BottomMetricsAndButton(
                 icon = Icons.Default.AccessTime
             )
             MetricCard(
-                value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
-                label = "area captured",
+                value = String.format("%.0fm²", uiState.capturedAreas.sumOf { it.area }),
+                label = "Area",
                 icon = Icons.Default.Castle
             )
         }
@@ -1105,7 +1169,7 @@ fun BottomMetricsAndButton(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.DirectionsRun,
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                             contentDescription = "Start Run",
                             modifier = Modifier.size(42.dp),
                             tint = Color.Black

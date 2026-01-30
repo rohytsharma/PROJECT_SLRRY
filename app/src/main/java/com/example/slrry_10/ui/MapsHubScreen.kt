@@ -1,6 +1,7 @@
 package com.example.slrry_10.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,19 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Castle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,7 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Intent
-import com.example.slrry_10.FriendsLeaderboardActivity
+import com.example.slrry_10.LeaderboardMode
+import com.example.slrry_10.leaderboardIntent
 import com.example.slrry_10.model.AreaModel
 import com.example.slrry_10.model.LocationModel
 import com.example.slrry_10.viewmodel.MapsTab
@@ -90,8 +100,16 @@ fun MapsHubScreen(
     val totalArea = selectedOwners.sumOf { owner -> owner.areas.sumOf { it.area } }
 
     var rendered by remember { mutableStateOf(RenderedMapIds()) }
+    var hasCentered by remember(uiState.mapsTab) { mutableStateOf(false) }
 
-    LaunchedEffect(mapLibreMap, uiState.mapsTab, uiState.capturedAreas, uiState.worldOwners, uiState.friendsOwners) {
+    LaunchedEffect(
+        mapLibreMap,
+        uiState.mapsTab,
+        uiState.currentLocation,
+        uiState.capturedAreas,
+        uiState.worldOwners,
+        uiState.friendsOwners
+    ) {
         val map = mapLibreMap ?: return@LaunchedEffect
         map.getStyle { style ->
             // Remove previously rendered layers/sources from our maps screen.
@@ -114,14 +132,15 @@ fun MapsHubScreen(
             rendered = RenderedMapIds(layerIds = newLayerIds, sourceIds = newSourceIds)
         }
 
-        // Always snap camera to the last known location (tight zoom).
-        uiState.currentLocation?.let { loc ->
+        // Snap camera to the user's current location (tight zoom) once per tab selection.
+        if (!hasCentered) uiState.currentLocation?.let { loc ->
             try {
                 val camera = CameraPosition.Builder()
                     .target(LatLng(loc.latitude, loc.longitude))
                     .zoom(17.0)
                     .build()
                 map.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 450)
+                hasCentered = true
             } catch (_: Exception) {}
         }
     }
@@ -140,7 +159,7 @@ fun MapsHubScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { onBack?.invoke() ?: viewModel.backToSummaryFromMaps() }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = text)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = text)
                 }
                 Text(
                     text = "MAPS",
@@ -150,7 +169,12 @@ fun MapsHubScreen(
                 )
                 IconButton(
                     onClick = {
-                        context.startActivity(Intent(context, FriendsLeaderboardActivity::class.java))
+                        val mode = when (uiState.mapsTab) {
+                            MapsTab.WORLD -> LeaderboardMode.WORLD
+                            MapsTab.PERSONAL -> LeaderboardMode.PERSONAL
+                            MapsTab.FRIENDS -> LeaderboardMode.FRIENDS
+                        }
+                        context.startActivity(leaderboardIntent(context, mode))
                     }
                 ) {
                     Icon(Icons.Filled.Leaderboard, contentDescription = "Leaderboard", tint = text)
@@ -181,6 +205,47 @@ fun MapsHubScreen(
                     onClick = { viewModel.setMapsTab(MapsTab.FRIENDS) }
                 )
             }
+
+            if (uiState.mapsTab == MapsTab.WORLD && selectedOwners.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(items = selectedOwners.take(12), key = { it.id }) { owner ->
+                        OwnerChip(owner = owner)
+                    }
+                }
+            }
+        }
+
+        // Zoom controls (left side)
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 12.dp)
+                .padding(top = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.94f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column {
+                    IconButton(
+                        onClick = { try { mapLibreMap?.animateCamera(CameraUpdateFactory.zoomIn(), 180) } catch (_: Exception) {} }
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Zoom in", tint = text)
+                    }
+                    IconButton(
+                        onClick = { try { mapLibreMap?.animateCamera(CameraUpdateFactory.zoomOut(), 180) } catch (_: Exception) {} }
+                    ) {
+                        Icon(Icons.Filled.Remove, contentDescription = "Zoom out", tint = text)
+                    }
+                }
+            }
         }
 
         // Bottom metric (overlay)
@@ -202,7 +267,11 @@ fun MapsHubScreen(
             ) {
                 Icon(Icons.Filled.Castle, contentDescription = null, tint = text, modifier = Modifier.height(30.dp))
                 Text(
-                    text = String.format("%.0fm²", totalArea),
+                    text = when {
+                        totalArea <= 0.0 -> "0m²"
+                        totalArea < 1.0 -> "<1m²"
+                        else -> String.format("%.0fm²", totalArea)
+                    },
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = text
@@ -226,6 +295,35 @@ private fun TabText(label: String, selected: Boolean, onClick: () -> Unit) {
         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
         color = Color(0xFF111416)
     )
+}
+
+@Composable
+private fun OwnerChip(owner: ZoneOwner) {
+    val bg = Color(owner.colorArgb)
+    val text = Color(0xFF111416)
+    Card(
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = bg.copy(alpha = 0.18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(bg, shape = CircleShape)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = owner.displayName,
+                color = text,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 private fun renderOwners(

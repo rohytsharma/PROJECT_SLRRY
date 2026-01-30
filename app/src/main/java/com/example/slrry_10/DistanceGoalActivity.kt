@@ -30,7 +30,10 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -102,9 +105,16 @@ fun DistanceGoalScreen(
 ) {
     val minDistance = 0f
     val maxDistance = 100f
-    val snappedValue = remember(distanceKm, step) {
-        ((distanceKm + step / 2) / step) * step
-    }.coerceIn(minDistance.toInt(), maxDistance.toInt())
+    val snapStepKm = 5
+    var sliderValue by rememberSaveable { mutableStateOf(distanceKm.toFloat()) }
+    // Keep slider in sync when returning to this screen / recomposing from ViewModel updates.
+    if (sliderValue != distanceKm.toFloat()) sliderValue = distanceKm.toFloat()
+
+    fun snapped(v: Float): Int {
+        val raw = v.coerceIn(minDistance, maxDistance).toInt()
+        return ((raw + snapStepKm / 2) / snapStepKm) * snapStepKm
+    }
+    val snappedValue = snapped(sliderValue).coerceIn(minDistance.toInt(), maxDistance.toInt())
 
     Column(
         modifier = Modifier
@@ -137,13 +147,17 @@ fun DistanceGoalScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val sliderValue = remember { snappedValue.toFloat() }
             Slider(
                 value = sliderValue,
-                onValueChange = { onDistanceChange(it.toInt()) },
-                onValueChangeFinished = { onDistanceChange(snappedValue) },
+                onValueChange = { v ->
+                    sliderValue = v
+                    onDistanceChange(snapped(v))
+                },
+                onValueChangeFinished = {
+                    onDistanceChange(snapped(sliderValue))
+                },
                 valueRange = minDistance..maxDistance,
-                steps = ((maxDistance - minDistance) / step).toInt() - 1, // snap to 'step' increments
+                steps = ((maxDistance - minDistance) / snapStepKm).toInt() - 1, // snap to 5km increments
                 modifier = Modifier.fillMaxWidth(),
                 colors = SliderDefaults.colors(
                     thumbColor = Mint,
