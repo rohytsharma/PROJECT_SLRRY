@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalContext
@@ -366,32 +367,49 @@ private fun FriendRow(row: LeaderboardRow) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = row.rank.toString(), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-                // Avatar
+            // Left: rank
+            Text(
+                text = row.rank.toString(),
+                modifier = Modifier.width(28.dp),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF2F2F2F)
+            )
+
+            // Center: avatar + name (center-aligned)
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .background(Color.Black, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "\uD83D\uDC64", fontSize = 18.sp, color = Color.White)
                 }
-                // Name
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = if (row.isYou) "${row.user.displayName} (You)" else row.user.displayName,
+                    modifier = Modifier.fillMaxWidth(0.82f),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF2F2F2F)
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF2F2F2F),
+                    maxLines = 1
                 )
             }
+
             // Points
             Text(
                 text = row.points.toString(),
+                modifier = Modifier.width(56.dp),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.End,
                 color = Color(0xFF2F2F2F)
             )
         }
