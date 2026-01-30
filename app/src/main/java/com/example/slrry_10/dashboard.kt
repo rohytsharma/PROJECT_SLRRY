@@ -294,7 +294,7 @@ fun RecentActivityCard() {
     ) {
         Column(Modifier.padding(16.dp)) {
 
-            Text("Recent run", fontWeight = FontWeight.Bold)
+            Text("Recent run", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 if (latest == null) "Tap Start to record a run" else "Your latest recorded run",
                 fontSize = 12.sp,
@@ -379,7 +379,7 @@ fun SuggestedWorkoutsSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Suggested workouts", fontWeight = FontWeight.Bold)
+            Text("Suggested workouts", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 "See all",
                 fontSize = 12.sp,
@@ -439,7 +439,7 @@ fun ChallengesSection() {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Challenges", fontWeight = FontWeight.Bold)
+            Text("Challenges", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
             Text(
                 "See all",
                 fontSize = 12.sp,
