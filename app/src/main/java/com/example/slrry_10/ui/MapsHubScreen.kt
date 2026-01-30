@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Castle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -213,6 +215,33 @@ fun MapsHubScreen(
                 ) {
                     items(items = selectedOwners.take(12), key = { it.id }) { owner ->
                         OwnerChip(owner = owner)
+                    }
+                }
+            }
+        }
+
+        // Zoom controls (left side)
+        Column(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.85f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column {
+                    IconButton(
+                        onClick = { try { mapLibreMap?.animateCamera(CameraUpdateFactory.zoomIn(), 180) } catch (_: Exception) {} }
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Zoom in", tint = text)
+                    }
+                    IconButton(
+                        onClick = { try { mapLibreMap?.animateCamera(CameraUpdateFactory.zoomOut(), 180) } catch (_: Exception) {} }
+                    ) {
+                        Icon(Icons.Filled.Remove, contentDescription = "Zoom out", tint = text)
                     }
                 }
             }

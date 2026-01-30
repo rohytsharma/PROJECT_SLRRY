@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -37,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +56,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -72,6 +75,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.coroutines.resume
 import kotlinx.coroutines.launch
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,21 +120,38 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     var incomingRequests by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var showAddFriend by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
-        val (nameFromDb, emailFromDb) = fetchUserProfile()
+    suspend fun loadProfile() {
+        val (dbDisplay, dbName, dbEmail) = fetchUserProfile()
         val (ageFromDb, bioFromDb) = fetchUserExtras()
         val authUser = FirebaseAuth.getInstance().currentUser
 
-        displayName = nameFromDb
-            .takeIf { !it.isNullOrBlank() }
-            ?: authUser?.displayName
-            ?: "Runner"
-        email = emailFromDb
+        val resolvedEmail = dbEmail
             .takeIf { !it.isNullOrBlank() }
             ?: authUser?.email
             ?: ""
+        val emailPrefix = resolvedEmail.substringBefore("@").trim()
 
+        fun looksLikeEmailishName(n: String): Boolean {
+            val s = n.trim()
+            if (s.isBlank()) return true
+            if (s.contains("@")) return true
+            if (emailPrefix.isNotBlank() && s.equals(emailPrefix, ignoreCase = true)) return true
+            if (emailPrefix.isNotBlank() && s.equals(emailPrefix.replace('.', ' '), ignoreCase = true)) return true
+            return false
+        }
+
+        val resolvedName: String = when {
+            !dbName.isNullOrBlank() && looksLikeEmailishName(dbDisplay.orEmpty()) -> dbName.orEmpty()
+            !dbDisplay.isNullOrBlank() && !looksLikeEmailishName(dbDisplay) -> dbDisplay.orEmpty()
+            !dbName.isNullOrBlank() -> dbName.orEmpty()
+            authUser?.displayName?.takeIf { !looksLikeEmailishName(it) } != null -> authUser.displayName.orEmpty()
+            else -> "Runner"
+        }.trim().ifBlank { "Runner" }
+
+        displayName = resolvedName
+        email = resolvedEmail
         age = ageFromDb
         bio = bioFromDb.orEmpty()
 
@@ -160,6 +182,21 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         streakDays = buildStreakDays(runs)
         friends = friendsRepo.listFriends()
         incomingRequests = friendsRepo.listIncomingFriendRequests()
+    }
+
+    LaunchedEffect(Unit) {
+        loadProfile()
+    }
+
+    // When returning from Edit Profile, refresh automatically.
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { loadProfile() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
     LazyColumn(
@@ -452,6 +489,7 @@ private fun ProfileHeader(
             .fillMaxWidth()
             .height(260.dp)
             .background(headerColor)
+            .statusBarsPadding()
     ) {
         IconButton(
             onClick = onBack,
@@ -500,7 +538,7 @@ private fun ProfileHeader(
             "Profile",
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp),
+                .padding(top = 10.dp),
             color = headerText,
             fontWeight = FontWeight.Bold
         )
@@ -705,19 +743,19 @@ private suspend fun fetchUserExtras(): Pair<Int?, String?> {
     }
 }
 
-private suspend fun fetchUserProfile(): Pair<String?, String?> {
-    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Pair(null, null)
+private suspend fun fetchUserProfile(): Triple<String?, String?, String?> {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Triple(null, null, null)
     val ref = FirebaseDatabase.getInstance().reference.child("users").child(uid)
     return suspendCancellableCoroutine { cont ->
         ref.get()
             .addOnSuccessListener { snap ->
-                val name = snap.child("displayName").getValue(String::class.java)
-                    ?: snap.child("name").getValue(String::class.java)
+                val display = snap.child("displayName").getValue(String::class.java)
+                val name = snap.child("name").getValue(String::class.java)
                 val email = snap.child("email").getValue(String::class.java)
-                cont.resume(Pair(name, email))
+                cont.resume(Triple(display, name, email))
             }
             .addOnFailureListener {
-                cont.resume(Pair(null, null))
+                cont.resume(Triple(null, null, null))
         }
     }
 }
