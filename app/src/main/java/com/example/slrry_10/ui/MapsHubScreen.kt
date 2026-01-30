@@ -20,7 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Castle
 import androidx.compose.material.icons.filled.Add
@@ -159,7 +159,7 @@ fun MapsHubScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { onBack?.invoke() ?: viewModel.backToSummaryFromMaps() }) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = text)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = text)
                 }
                 Text(
                     text = "MAPS",
