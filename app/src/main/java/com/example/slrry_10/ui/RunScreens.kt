@@ -371,7 +371,7 @@ fun PausedWithMapScreen(
         ) {
                 FloatingActionButton(
                     onClick = { viewModel.resumeTracking() },
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(56.dp),
                     containerColor = Color(0xFF4CAF50),
                     shape = CircleShape
                 ) {
