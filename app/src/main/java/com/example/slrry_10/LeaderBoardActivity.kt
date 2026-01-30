@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.repository.CapturedAreasRepository
 import com.example.slrry_10.repository.FriendsRepository
+import com.example.slrry_10.repository.TerritoryRepository
 import com.example.slrry_10.repository.UserSummary
 import com.example.slrry_10.ui.theme.SLRRYTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -99,7 +100,7 @@ fun LeaderBoardScreen(
 ) {
     val authUid = FirebaseAuth.getInstance().currentUser?.uid
     val friendsRepo = remember { FriendsRepository() }
-    val areasRepo = remember { CapturedAreasRepository() }
+    val territoryRepo = remember { TerritoryRepository() }
 
     var rows by remember { mutableStateOf<List<LeaderboardRow>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -126,7 +127,7 @@ fun LeaderBoardScreen(
         val computed = coroutineScope {
             baseUsers.map { u ->
                 async(Dispatchers.IO) {
-                    val totalArea = areasRepo.getAreasForUser(u.uid).sumOf { it.area }
+                    val totalArea = territoryRepo.getTotalAreaForUser(u.uid)
                     Pair(u, totalArea)
                 }
             }.awaitAll()

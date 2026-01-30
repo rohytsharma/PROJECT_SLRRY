@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,11 +34,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.model.RunSession
-import com.example.slrry_10.repository.CapturedAreasRepository
+import com.example.slrry_10.repository.TerritoryRepository
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.MapViewComponent
 import com.example.slrry_10.viewmodel.StartRunUiState
@@ -45,6 +47,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 class DashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,7 +107,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @Composable
 fun QuickOverviewCard() {
     val repo = remember { FirebaseUserRepoImpl() }
-    val areasRepo = remember { CapturedAreasRepository() }
+    val territoryRepo = remember { TerritoryRepository() }
     var weekKm by remember { mutableStateOf(0.0) }
     var runsCount by remember { mutableStateOf(0) }
     var totalArea by remember { mutableStateOf<Double?>(null) }
@@ -116,7 +120,7 @@ fun QuickOverviewCard() {
         weekKm = weekRuns.sumOf { it.distance } / 1000.0
         runsCount = weekRuns.size
         val uid = FirebaseAuth.getInstance().currentUser?.uid
-        totalArea = if (uid.isNullOrBlank()) null else areasRepo.getAreasForUser(uid).sumOf { it.area }
+        totalArea = if (uid.isNullOrBlank()) null else territoryRepo.getTotalAreaForUser(uid)
     }
 
     Card(
@@ -189,13 +193,29 @@ fun GoalProgressCard() {
     val repo = remember { FirebaseUserRepoImpl() }
     var weeklyGoalKm by remember { mutableStateOf<Int?>(null) }
     var weeklyDoneKm by remember { mutableStateOf(0.0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
+    suspend fun reload() {
         weeklyGoalKm = fetchWeeklyGoalKm()
         val now = System.currentTimeMillis()
         val weekAgo = now - 7L * 24L * 60L * 60L * 1000L
         val runs = repo.getRunSessions()
         weeklyDoneKm = runs.filter { it.startTime >= weekAgo }.sumOf { it.distance } / 1000.0
+    }
+
+    LaunchedEffect(Unit) { reload() }
+
+    // Refresh when returning from Edit Profile (goal updates).
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    reload()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
     val goal = weeklyGoalKm
@@ -253,14 +273,14 @@ fun GoalProgressCard() {
 @Composable
 fun RecentActivityCard() {
     val repo = remember { FirebaseUserRepoImpl() }
-    val areasRepo = remember { CapturedAreasRepository() }
+    val territoryRepo = remember { TerritoryRepository() }
     var latest by remember { mutableStateOf<RunSession?>(null) }
     var totalCapturedArea by remember { mutableStateOf<Double?>(null) }
 
     LaunchedEffect(Unit) {
         latest = repo.getRunSessions().firstOrNull()
         val uid = FirebaseAuth.getInstance().currentUser?.uid
-        totalCapturedArea = if (uid.isNullOrBlank()) null else areasRepo.getAreasForUser(uid).sumOf { it.area }
+        totalCapturedArea = if (uid.isNullOrBlank()) null else territoryRepo.getTotalAreaForUser(uid)
     }
 
     Card(
