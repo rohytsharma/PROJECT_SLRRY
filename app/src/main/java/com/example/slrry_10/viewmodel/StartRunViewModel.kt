@@ -13,10 +13,13 @@ import com.example.slrry_10.repository.FriendsRepository
 import com.example.slrry_10.repository.LocationRepository
 import com.example.slrry_10.repository.UserRepo
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
@@ -196,13 +199,11 @@ class StartRunViewModel(
     }
 
     fun openMaps() {
-        // Ensure we have some data to show for WORLD / FRIENDS.
-        val current = _uiState.value
-        val ensured = ensureDemoOwners(current)
-        _uiState.value = ensured.copy(
+        _uiState.value = _uiState.value.copy(
             screenState = RunScreenState.MAPS,
             mapsTab = MapsTab.PERSONAL
         )
+        refreshWorldOwners()
         refreshFriendsOwners()
     }
 
@@ -212,8 +213,10 @@ class StartRunViewModel(
 
     fun setMapsTab(tab: MapsTab) {
         _uiState.value = _uiState.value.copy(mapsTab = tab)
-        if (tab == MapsTab.FRIENDS) {
-            refreshFriendsOwners()
+        when (tab) {
+            MapsTab.WORLD -> refreshWorldOwners()
+            MapsTab.FRIENDS -> refreshFriendsOwners()
+            MapsTab.PERSONAL -> Unit
         }
     }
     
@@ -391,61 +394,32 @@ class StartRunViewModel(
         return earthRadius * c
     }
 
-    private fun ensureDemoOwners(state: StartRunUiState): StartRunUiState {
-        // If we already have demo owners, keep them stable.
-        // WORLD is demo; FRIENDS is loaded from RTDB.
-        if (state.worldOwners.isNotEmpty()) return state
-
-        val loc = state.currentLocation ?: LocationModel(0.0, 0.0)
-
-        // If the user has no captured areas yet, we still keep PERSONAL empty,
-        // but WORLD will show example zones so the screen isn't blank.
-        val youAreas = state.capturedAreas
-
-        fun squareArea(center: LocationModel, meters: Double): AreaModel {
-            val lat = center.latitude
-            val lon = center.longitude
-            val latDelta = meters / 111_320.0
-            val lonDelta = meters / (111_320.0 * cos(Math.toRadians(lat)).coerceAtLeast(0.2))
-            val poly = listOf(
-                LocationModel(lat + latDelta, lon - lonDelta),
-                LocationModel(lat + latDelta, lon + lonDelta),
-                LocationModel(lat - latDelta, lon + lonDelta),
-                LocationModel(lat - latDelta, lon - lonDelta)
-            )
-            val area = try {
-                locationRepo.calculateArea(poly)
-            } catch (_: Throwable) {
-                0.0
+    private fun refreshWorldOwners() {
+        viewModelScope.launch {
+            val users = friendsRepo.listAllUsers(limit = 200, includeSelf = true)
+            if (users.isEmpty()) {
+                _uiState.value = _uiState.value.copy(worldOwners = emptyList())
+                return@launch
             }
-            return AreaModel(polygon = poly, area = area)
-        }
 
-        val world = buildList {
-            // You (green) if you have data
-            if (youAreas.isNotEmpty()) {
-                add(ZoneOwner(id = "you", displayName = "You", colorArgb = 0xFFB8FF3A.toInt(), areas = youAreas))
+            val owners = coroutineScope {
+                users.map { u ->
+                    async(Dispatchers.IO) {
+                        val areas = areasRepo.getAreasForUser(u.uid)
+                        ZoneOwner(
+                            id = u.uid,
+                            displayName = if (u.uid == auth.currentUser?.uid) "You" else u.displayName,
+                            colorArgb = colorForUid(u.uid),
+                            areas = areas
+                        )
+                    }
+                }.awaitAll()
             }
-            // Two "global" users
-            add(
-                ZoneOwner(
-                    id = "world_1",
-                    displayName = "World User 1",
-                    colorArgb = 0xFFF04AA8.toInt(), // pink-ish
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude + 0.0015, longitude = loc.longitude + 0.0010), 120.0))
-                )
-            )
-            add(
-                ZoneOwner(
-                    id = "world_2",
-                    displayName = "World User 2",
-                    colorArgb = 0xFF6BEA5B.toInt(), // green-ish
-                    areas = listOf(squareArea(loc.copy(latitude = loc.latitude - 0.0018, longitude = loc.longitude - 0.0008), 140.0))
-                )
-            )
-        }
+                // show biggest capturers first; map rendering will still include all
+                .sortedByDescending { it.areas.sumOf { a -> a.area } }
 
-        return state.copy(worldOwners = world)
+            _uiState.value = _uiState.value.copy(worldOwners = owners)
+        }
     }
 
     private fun refreshMyCapturedAreas() {
