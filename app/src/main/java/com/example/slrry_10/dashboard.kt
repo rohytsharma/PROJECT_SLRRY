@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.slrry_10.model.RunSession
+import com.example.slrry_10.repository.CapturedAreasRepository
 import com.example.slrry_10.repository.FirebaseUserRepoImpl
 import com.example.slrry_10.ui.MapViewComponent
 import com.example.slrry_10.viewmodel.StartRunUiState
@@ -245,10 +246,14 @@ fun GoalProgressCard() {
 @Composable
 fun RecentActivityCard() {
     val repo = remember { FirebaseUserRepoImpl() }
+    val areasRepo = remember { CapturedAreasRepository() }
     var latest by remember { mutableStateOf<RunSession?>(null) }
+    var totalCapturedArea by remember { mutableStateOf<Double?>(null) }
 
     LaunchedEffect(Unit) {
         latest = repo.getRunSessions().firstOrNull()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        totalCapturedArea = if (uid.isNullOrBlank()) null else areasRepo.getAreasForUser(uid).sumOf { it.area }
     }
 
     Card(
@@ -276,6 +281,13 @@ fun RecentActivityCard() {
                 Text(latest?.averagePace ?: "—")
                 Text(latest?.duration?.let { "${it / 60} M" } ?: "—")
             }
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Area captured: " + (totalCapturedArea?.let { String.format("%.0f m²", it) } ?: "—"),
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
 
             Spacer(Modifier.height(12.dp))
 
