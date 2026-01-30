@@ -1,5 +1,6 @@
 package com.example.slrry_10
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,15 +90,20 @@ class ProfileActivity : ComponentActivity() {
 
 @Composable
 fun ProfileScreen(onBack: () -> Unit = {}) {
-    val background = Color(0xFFF5F1EB)
-    val header = Color(0xFF111416)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Light green page background + neon header to match the app's premium look.
+    val background = Mint.copy(alpha = 0.14f)
+    val header = Mint
     val textGray = Color(0xFF6E757A)
 
     val repo = remember { FirebaseUserRepoImpl() }
     var displayName by remember { mutableStateOf("—") }
     var email by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf<Int?>(null) }
+    var bio by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("Beginner") }
     var weeklyGoalKm by remember { mutableStateOf<Int?>(null) }
+    var weeklyGoalActiveHours by remember { mutableStateOf<Int?>(null) }
     var weekDistanceKm by remember { mutableStateOf(0) }
     var weekActiveHours by remember { mutableStateOf(0) }
     var totalDistanceKm by remember { mutableStateOf(0.0) }
@@ -111,6 +118,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
 
     LaunchedEffect(Unit) {
         val (nameFromDb, emailFromDb) = fetchUserProfile()
+        val (ageFromDb, bioFromDb) = fetchUserExtras()
         val authUser = FirebaseAuth.getInstance().currentUser
 
         displayName = nameFromDb
@@ -122,7 +130,12 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
             ?: authUser?.email
             ?: ""
 
-        weeklyGoalKm = fetchWeeklyGoalKm()
+        age = ageFromDb
+        bio = bioFromDb.orEmpty()
+
+        val (goalKm, goalHours) = fetchGoals()
+        weeklyGoalKm = goalKm
+        weeklyGoalActiveHours = goalHours
 
         val runs = repo.getRunSessions()
         val now = System.currentTimeMillis()
@@ -159,10 +172,22 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         item {
             ProfileHeader(
                 onBack = onBack,
+                onEdit = {
+                    try {
+                        context.startActivity(Intent(context, EditProfileActivity::class.java))
+                    } catch (_: Exception) {}
+                },
                 headerColor = header,
                 displayName = displayName,
                 subtitle = level,
                 email = email
+            )
+        }
+
+        item {
+            AboutCard(
+                age = age,
+                bio = bio
             )
         }
 
@@ -180,7 +205,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         ProgressCard(
             title = "Active Time",
                 current = weekActiveHours,
-            goal = 25,
+            goal = (weeklyGoalActiveHours ?: 25).coerceAtLeast(1),
             unit = "hrs",
             textGray = textGray
         )
@@ -264,7 +289,6 @@ private fun FriendsCard(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(f.displayName, fontWeight = FontWeight.SemiBold)
-                            if (f.email.isNotBlank()) Text(f.email, fontSize = 12.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -351,9 +375,6 @@ private fun AddFriendDialog(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(u.displayName, fontWeight = FontWeight.SemiBold)
-                                        if (u.email.isNotBlank()) {
-                                            Text(u.email, fontSize = 12.sp, color = Color.Gray)
-                                        }
                                     }
                                     Button(
                                         onClick = {
@@ -403,7 +424,6 @@ private fun FriendRequestsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(u.displayName, fontWeight = FontWeight.SemiBold)
-                        if (u.email.isNotBlank()) Text(u.email, fontSize = 12.sp, color = Color.Gray)
                     }
                     Button(
                         onClick = { onAccept(u.uid) },
@@ -420,11 +440,13 @@ private fun FriendRequestsCard(
 @Composable
 private fun ProfileHeader(
     onBack: () -> Unit,
+    onEdit: () -> Unit,
     headerColor: Color,
     displayName: String,
     subtitle: String,
     email: String
 ) {
+    val headerText = Color(0xFF111416)
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -437,7 +459,16 @@ private fun ProfileHeader(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = headerText)
+        }
+
+        IconButton(
+            onClick = onEdit,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        ) {
+            Icon(Icons.Default.Edit, contentDescription = "Edit profile", tint = headerText)
         }
 
         Column(
@@ -449,19 +480,19 @@ private fun ProfileHeader(
                 modifier = Modifier
                     .size(90.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f)),
+                    .background(Color.White.copy(alpha = 0.55f)),
                 contentAlignment = Alignment.Center
             ) {
                 val initial = displayName.trim().firstOrNull()?.uppercase() ?: "R"
-                Text(initial, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(initial, color = headerText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(displayName, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+            Text(displayName, color = headerText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = headerText.copy(alpha = 0.75f), fontSize = 14.sp)
             if (email.isNotBlank()) {
-                Text(email, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                Text(email, color = headerText.copy(alpha = 0.65f), fontSize = 12.sp)
             }
         }
 
@@ -470,7 +501,7 @@ private fun ProfileHeader(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 16.dp),
-            color = Color.White,
+            color = headerText,
             fontWeight = FontWeight.Bold
         )
     }
@@ -602,6 +633,31 @@ private fun buildStreakDays(runs: List<RunSession>): List<StreakDay> {
     }
 }
 
+@Composable
+private fun AboutCard(
+    age: Int?,
+    bio: String
+) {
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("About", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            val ageText = age?.takeIf { it > 0 }?.toString() ?: "—"
+            Text("Age: $ageText", color = Color(0xFF6E757A), fontSize = 12.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = bio.trim().ifBlank { "Add a bio to tell friends about you." },
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
 private suspend fun fetchWeeklyGoalKm(): Int? {
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
     val ref = FirebaseDatabase.getInstance().reference
@@ -614,6 +670,38 @@ private suspend fun fetchWeeklyGoalKm(): Int? {
         ref.get()
             .addOnSuccessListener { snap -> cont.resume(snap.getValue(Int::class.java)) }
             .addOnFailureListener { cont.resume(null) }
+    }
+}
+
+private suspend fun fetchGoals(): Pair<Int?, Int?> {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Pair(null, null)
+    val ref = FirebaseDatabase.getInstance().reference
+        .child("users")
+        .child(uid)
+        .child("goals")
+
+    return suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap ->
+                val km = snap.child("weeklyDistanceKm").getValue(Int::class.java)
+                val hrs = snap.child("weeklyActiveHours").getValue(Int::class.java)
+                cont.resume(Pair(km, hrs))
+            }
+            .addOnFailureListener { cont.resume(Pair(null, null)) }
+    }
+}
+
+private suspend fun fetchUserExtras(): Pair<Int?, String?> {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return Pair(null, null)
+    val ref = FirebaseDatabase.getInstance().reference.child("users").child(uid)
+    return suspendCancellableCoroutine { cont ->
+        ref.get()
+            .addOnSuccessListener { snap ->
+                val age = snap.child("age").getValue(Int::class.java)
+                val bio = snap.child("bio").getValue(String::class.java)
+                cont.resume(Pair(age, bio))
+            }
+            .addOnFailureListener { cont.resume(Pair(null, null)) }
     }
 }
 
