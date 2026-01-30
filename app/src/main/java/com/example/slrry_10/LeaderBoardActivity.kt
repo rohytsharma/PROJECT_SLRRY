@@ -353,7 +353,7 @@ private fun FriendRow(row: LeaderboardRow) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 14.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (row.isYou) Color(0xFFEFFBE6) else Color(0xFFF7F7F7)
@@ -363,7 +363,7 @@ private fun FriendRow(row: LeaderboardRow) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
