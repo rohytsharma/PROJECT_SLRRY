@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -556,8 +557,10 @@ private fun ProgressCard(
     val progress = current / goal.toFloat()
 
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, fontWeight = FontWeight.Bold)
@@ -577,7 +580,9 @@ private fun AchievementCard(
 ) {
     Card(
         modifier = Modifier.padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Total progress", fontWeight = FontWeight.Bold)
@@ -617,8 +622,10 @@ private data class StreakDay(val date: LocalDate, val status: StreakStatus)
 @Composable
 private fun StreaksCard(days: List<StreakDay>) {
     Card(
-        modifier = Modifier.padding(16.dp),
-        shape = RoundedCornerShape(20.dp)
+        modifier = Modifier.padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("STREAKS", fontWeight = FontWeight.Bold)
@@ -678,7 +685,9 @@ private fun AboutCard(
 ) {
     Card(
         modifier = Modifier.padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("About", fontWeight = FontWeight.Bold)
