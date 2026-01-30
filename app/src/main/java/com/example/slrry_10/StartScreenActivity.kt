@@ -189,7 +189,7 @@ fun StartScreen(
 
         Text(
             text = "sign up with",
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             color = muted
         )
         Spacer(modifier = Modifier.height(18.dp))

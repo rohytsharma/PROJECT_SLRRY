@@ -37,7 +37,7 @@ import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 
-private val AccentGreen = Color(0xFFB5FF00)
+private val AccentGreen = Color(0xFFB8FF3A)
 private val FieldBg = Color(0xFFF6F6F6)
 private val PageBg = Color.White
 
