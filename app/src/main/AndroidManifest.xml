@@ -56,9 +56,19 @@
             android:label="Leaderboard"
             android:theme="@style/Theme.SLRRY_10" />
         <activity
+            android:name=".LeaderBoardActivity"
+            android:exported="false"
+            android:label="Leaderboard"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
             android:name=".ProfileActivity"
             android:exported="false"
             android:label="Profile"
+            android:theme="@style/Theme.SLRRY_10" />
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="false"
+            android:label="Edit Profile"
             android:theme="@style/Theme.SLRRY_10" />
         <activity
             android:name=".RecentActivity"
