@@ -103,8 +103,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @Composable
 fun QuickOverviewCard() {
     val repo = remember { FirebaseUserRepoImpl() }
+    val areasRepo = remember { CapturedAreasRepository() }
     var weekKm by remember { mutableStateOf(0.0) }
     var runsCount by remember { mutableStateOf(0) }
+    var totalArea by remember { mutableStateOf<Double?>(null) }
 
     LaunchedEffect(Unit) {
         val now = System.currentTimeMillis()
@@ -113,6 +115,8 @@ fun QuickOverviewCard() {
         val weekRuns = runs.filter { it.startTime >= weekAgo }
         weekKm = weekRuns.sumOf { it.distance } / 1000.0
         runsCount = weekRuns.size
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        totalArea = if (uid.isNullOrBlank()) null else areasRepo.getAreasForUser(uid).sumOf { it.area }
     }
 
     Card(
@@ -140,7 +144,10 @@ fun QuickOverviewCard() {
             ) {
                 OverviewItem(String.format("%.1f KM", weekKm), "This week")
                 OverviewItem("$runsCount Runs", "This week")
-                OverviewItem("—", "Area")
+                OverviewItem(
+                    value = totalArea?.let { String.format("%.0f m²", it) } ?: "—",
+                    label = "Area"
+                )
             }
         }
     }
