@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.DisposableEffect
@@ -704,7 +705,7 @@ fun OldStartRunScreen(
                 MetricCard(
                     value = uiState.currentSession?.averagePace ?: "0'00''",
                     label = "Avg Pace",
-                    icon = Icons.Default.DirectionsRun
+                    icon = Icons.AutoMirrored.Filled.DirectionsRun
                 )
                 MetricCard(
                     value = formatDuration(uiState.currentSession?.duration ?: 0L),
@@ -811,7 +812,7 @@ fun OldStartRunScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (uiState.isTracking) Icons.Default.Stop else Icons.Default.DirectionsRun,
+                            imageVector = if (uiState.isTracking) Icons.Default.Stop else Icons.AutoMirrored.Filled.DirectionsRun,
                             contentDescription = if (uiState.isTracking) "Stop" else "Start Run",
                             modifier = Modifier.size(40.dp),
                             tint = Color.Black
@@ -1205,7 +1206,7 @@ fun StartRunScreenPreview() {
                     MetricCard(
                         value = "5'30''",
                         label = "Avg Pace",
-                        icon = Icons.Default.DirectionsRun
+                        icon = Icons.AutoMirrored.Filled.DirectionsRun
                     )
                     MetricCard(
                         value = "12:34",
@@ -1236,7 +1237,7 @@ fun StartRunScreenPreview() {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.DirectionsRun,
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                             contentDescription = "Start Run",
                             modifier = Modifier.size(40.dp),
                             tint = Color.Black
