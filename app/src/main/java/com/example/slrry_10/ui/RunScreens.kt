@@ -1129,8 +1129,8 @@ fun BottomMetricsAndButton(
                 icon = Icons.Default.AccessTime
             )
             MetricCard(
-                value = String.format("%.2fm²", uiState.capturedAreas.sumOf { it.area }),
-                label = "area captured",
+                value = String.format("%.0fm²", uiState.capturedAreas.sumOf { it.area }),
+                label = "Area",
                 icon = Icons.Default.Castle
             )
         }
